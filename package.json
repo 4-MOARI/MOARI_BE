@@ -1,0 +1,28 @@
+{
+  "name": "moari_be",
+  "version": "1.0.0",
+  "description": "서구실 4팀 모아리 백엔드 레포지토리입니다.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/4-MOARI/MOARI_BE.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/4-MOARI/MOARI_BE/issues"
+  },
+  "homepage": "https://github.com/4-MOARI/MOARI_BE#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mysql2": "^3.22.3",
+    "nodemon": "^3.1.14"
+  }
+}
