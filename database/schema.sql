@@ -37,7 +37,7 @@ CREATE TABLE clubs (
   clubId BIGINT PRIMARY KEY AUTO_INCREMENT,
 
   clubName VARCHAR(100) NOT NULL,
-  briefDescription VARCHAR(30),
+  briefDescription VARCHAR(90),
   description TEXT,
   activity TEXT,
 
