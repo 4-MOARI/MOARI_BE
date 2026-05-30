@@ -75,7 +75,7 @@ exports.getReviewStatsByClubId = async (
 
 
 /**
- * 특정 동아리 리뷰 전체 조회
+ * 특정 동아리 리뷰 전체 조회(최신순이 디폴트!)
  */
 exports.getReviewsByClubId = async (
   clubId
@@ -100,4 +100,44 @@ exports.getReviewsByClubId = async (
 
   return rows;
 };
+
+
+/**
+ * reviewId로 리뷰 조회
+ */
+exports.findByReviewId = async (
+  reviewId
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      reviewId,
+      userId
+    FROM reviews
+    WHERE reviewId = ?
+    `,
+    [reviewId]
+  );
+
+  return rows[0];
+};
+
+
+/**
+ * 리뷰 삭제
+ */
+exports.deleteReview = async (
+  reviewId
+) => {
+
+  await db.query(
+    `
+    DELETE FROM reviews
+    WHERE reviewId = ?
+    `,
+    [reviewId]
+  );
+};
+
 

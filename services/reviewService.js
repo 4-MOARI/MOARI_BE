@@ -140,4 +140,70 @@ exports.getClubReviews = async (clubId) => {
 };
 
 
+/**
+ * 리뷰 삭제
+ */
+exports.deleteReview = async ({
+  reviewId,
+  userId
+}) => {
+
+  // reviewId 검증
+  if (
+    !reviewId ||
+    isNaN(reviewId)
+  ) {
+
+    const error = new Error(
+      '올바른 리뷰 ID가 아닙니다.'
+    );
+
+    error.status = 400;
+    error.code = 'REVIEW_400';
+
+    throw error;
+  }
+
+  // 리뷰 존재 여부 확인
+  const review =
+    await reviewModel.findByReviewId(
+      reviewId
+    );
+
+  if (!review) {
+
+    const error = new Error(
+      '존재하지 않는 리뷰입니다.'
+    );
+
+    error.status = 404;
+    error.code = 'REVIEW_404';
+
+    throw error;
+  }
+
+  // 본인 리뷰 여부 확인
+  if (
+    review.userId !== userId
+  ) {
+
+    const error = new Error(
+      '본인이 작성한 리뷰만 삭제할 수 있습니다.'
+    );
+
+    error.status = 403;
+    error.code = 'REVIEW_403';
+
+    throw error;
+  }
+
+  // 리뷰 삭제
+  await reviewModel.deleteReview(
+    reviewId
+  );
+};
+
+
+
+
 
