@@ -2,10 +2,13 @@ const express = require('express');
 const router = express.Router();
 
 const reviewController = require('../controllers/reviewController');
-
+// authMiddleware 구현 후 활성화 예정 
+// const verifyToken = 
+    // require('../middlewares/authMiddleware');
 //리뷰 등록
 router.post(
   '/api/clubs/:clubId/reviews',
+  //verifyToken,
   reviewController.createReview
 );
 

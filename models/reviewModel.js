@@ -75,7 +75,7 @@ exports.getReviewStatsByClubId = async (
 
 
 /**
- * 특정 동아리 리뷰 전체 조회
+ * 특정 동아리 리뷰 전체 조회(최신순을 default로!)
  */
 exports.getReviewsByClubId = async (
   clubId
