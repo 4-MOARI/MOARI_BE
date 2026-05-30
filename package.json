@@ -4,8 +4,8 @@
   "description": "서구실 4팀 모아리 백엔드 레포지토리입니다.",
   "main": "index.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "repository": {
     "type": "git",
