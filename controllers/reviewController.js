@@ -47,3 +47,37 @@ exports.getClubReviews = async (req, res, next ) => {
         next(error);
     }
 };
+
+//리뷰 삭제
+exports.deleteReview = async (
+    req,
+    res,
+    next
+) => {
+    try {
+        const reviewId =
+            Number(req.params.reviewId);
+
+        //JWT 구현 전 임시 userId
+        const userId = 1;
+
+        //const userId =
+        //  req.user.userId;
+
+        await reviewService.deleteReview({
+            reviewId,
+            userId
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                message:
+                    '리뷰가 성공적으로 삭제되었습니다.'
+            },
+            error: null
+        });
+    } catch (error) {
+        next(error);
+    }
+};
