@@ -3,9 +3,17 @@ const router = express.Router();
 
 const reviewController = require('../controllers/reviewController');
 
+//리뷰 등록
 router.post(
   '/api/clubs/:clubId/reviews',
   reviewController.createReview
+);
+
+//리뷰 전체 조회
+router.get(
+    '/api/clubs/:clubId/reviews',
+    reviewController.getClubReviews,
+    //verifyToken
 );
 
 module.exports = router;

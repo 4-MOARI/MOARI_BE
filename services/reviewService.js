@@ -82,3 +82,62 @@ exports.createReview = async ({
   };
 };
 
+
+/**
+ * 특정 동아리 리뷰 전체 조회
+ */
+exports.getClubReviews = async (clubId) => {
+
+  // clubId 검증
+  if (!clubId || isNaN(clubId)) {
+
+    const error = new Error(
+      '올바른 동아리 ID가 아닙니다.'
+    );
+
+    error.status = 400;
+    error.code = 'REVIEW_400';
+
+    throw error;
+  }
+
+  // 동아리 존재 여부 확인
+  const club =
+    await clubModel.findClubById(clubId);
+
+  if (!club) {
+
+    const error = new Error(
+      '존재하지 않는 동아리입니다.'
+    );
+
+    error.status = 404;
+    error.code = 'CLUB_404';
+
+    throw error;
+  }
+
+  // 평균 별점 + 리뷰 수 조회
+  const stats =
+    await reviewModel.getReviewStatsByClubId(
+      clubId
+    );
+
+  // 리뷰 목록 조회
+  const reviews =
+    await reviewModel.getReviewsByClubId(
+      clubId
+    );
+
+  return {
+    clubId,
+    averageRating:
+      Number(stats.averageRating || 0),
+    reviewCount:
+      Number(stats.reviewCount || 0),
+    reviews
+  };
+};
+
+
+

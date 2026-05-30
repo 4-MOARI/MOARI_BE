@@ -29,3 +29,21 @@ exports.createReview = async (req, res, next) => {
     next(error);
   }
 };
+
+//특정 동아리 리뷰 전체 조회
+exports.getClubReviews = async (req, res, next ) => {
+    try {
+        const clubId = Number(req.params.clubId);
+
+        const result = 
+            await reviewService.getClubReviews( clubId );
+
+        return res.status(200).json({
+            success: true,
+            data: result,
+            error: null
+        });
+    } catch (error) {
+        next(error);
+    }
+};
