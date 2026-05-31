@@ -119,3 +119,55 @@ exports.createClubReport = async ({
     throw error;
   }
 };
+
+exports.getReportSummary = async (
+  clubId
+) => {
+
+  // 동아리 존재 여부 확인
+  const club =
+    await clubModel.findClubById(clubId);
+
+  if (!club) {
+
+    const error =
+      new Error(
+        '해당 동아리 정보를 찾을 수 없습니다.'
+      );
+
+    error.status = 404;
+    error.code = 'CLUB_404';
+
+    throw error;
+  }
+
+  // 총 신고 수 조회
+  const totalReportCount =
+    await reportModel.getTotalReportCount(
+      clubId
+    );
+
+  // 5회 미만이면 경고 비노출
+  if (totalReportCount < 5) {
+
+    return {
+      clubId,
+      isWarningTarget: false,
+      totalReportCount,
+      mostFrequentReason: null
+    };
+  }
+
+  // 최다 신고 사유 조회
+  const mostFrequentReason =
+    await reportModel.getMostFrequentReason(
+      clubId
+    );
+
+  return {
+    clubId,
+    isWarningTarget: true,
+    totalReportCount,
+    mostFrequentReason
+  };
+};
