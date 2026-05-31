@@ -3,6 +3,10 @@ const cors = require('cors');
 //리뷰 API 추가
 const reviewRoutes = require('./routes/reviewRoutes');
 
+//신고 API 추가
+const reportRoutes =
+    require('./routes/reportRoutes');
+
 const { errorHandler } = require('./middlewares/errorHandler');
 
 const app = express();
@@ -15,6 +19,9 @@ app.get('/', (req, res) => {
 });
 //리뷰 API 추가
 app.use(reviewRoutes);
+
+//신고 API 추가
+app.use('/api', reportRoutes);
 
 app.use(errorHandler);
 
