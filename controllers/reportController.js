@@ -39,3 +39,30 @@ exports.createClubReport = async (
     next(error);
   }
 };
+
+exports.getReportSummary = async (
+  req,
+  res,
+  next
+) => {
+
+  try {
+
+    const clubId =
+      Number(req.params.clubId);
+
+    const result =
+      await reportService.getReportSummary(
+        clubId
+      );
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};

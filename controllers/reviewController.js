@@ -7,7 +7,7 @@ exports.createReview = async (req, res, next) => {
     const { rating, content } = req.body;
 
     // 로그인 유저라고 가정
-    //const userId = req.user.userId;
+    // const userId = req.user.userId;
     //JWT 구현 전 임시 userId
     const userId = 1;
 

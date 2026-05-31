@@ -17,4 +17,13 @@ router.post(
   reportController.createClubReport
 );
 
+// 동아리 신고 요약 조회 API
+router.get(
+  '/clubs/:clubId/reports/summary',
+
+  // verifyToken,
+  
+  reportController.getReportSummary
+);
+
 module.exports = router;

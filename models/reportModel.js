@@ -36,3 +36,39 @@ exports.createClubReport = async ({
     createdAt: new Date()
   };
 };
+
+//총 신고 수 조회
+exports.getTotalReportCount =
+  async (clubId) => {
+
+    const [rows] = await db.query(
+      `
+      SELECT COUNT(*) AS count
+      FROM reports
+      WHERE clubId = ?
+      `,
+      [clubId]
+    );
+
+    return rows[0].count;
+};
+
+//최다 신고 사유 조회 
+exports.getMostFrequentReason =
+  async (clubId) => {
+
+    const [rows] = await db.query(
+      `
+      SELECT reasonType,
+             COUNT(*) AS count
+      FROM reports
+      WHERE clubId = ?
+      GROUP BY reasonType
+      ORDER BY count DESC
+      LIMIT 1
+      `,
+      [clubId]
+    );
+
+    return rows[0]?.reasonType || null;
+};
