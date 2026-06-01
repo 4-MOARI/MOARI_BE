@@ -17,6 +17,30 @@ router.get(
   userController.getMyProfile
 );
 
+router.post(
+  '/users/me/password/verify',
+
+  // verifyToken,
+
+  userController.verifyMyPassword
+);
+
+router.patch(
+  '/users/me/password',
+
+  // verifyToken,
+
+  userController.changeMyPassword
+);
+
+router.delete(
+  '/users/me',
+
+  // verifyToken,
+
+  userController.deleteMyAccount
+);
+
 router.get(
   '/users/me/favorites',
 

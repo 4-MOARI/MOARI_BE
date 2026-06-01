@@ -1,5 +1,40 @@
 const db = require('../database/db');
 
+exports.findPasswordByUserId = async (
+  userId
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      userId,
+      password
+    FROM users
+    WHERE userId = ?
+    `,
+    [userId]
+  );
+
+  return rows[0];
+};
+
+exports.updatePassword = async ({
+  userId,
+  password
+}) => {
+
+  await db.query(
+    `
+    UPDATE users
+    SET
+      password = ?,
+      updatedAt = CURRENT_TIMESTAMP
+    WHERE userId = ?
+    `,
+    [password, userId]
+  );
+};
+
 exports.findMyProfile = async (userId) => {
 
   const [rows] = await db.query(
@@ -96,6 +131,139 @@ exports.findFavoriteClubs = async ({
   );
 
   return rows;
+};
+
+exports.deleteMyAccount = async (
+  userId
+) => {
+  const connection =
+    await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [clubRows] =
+      await connection.query(
+        `
+        SELECT clubId
+        FROM clubs
+        WHERE lastModifiedBy = ?
+        `,
+        [userId]
+      );
+
+    const clubIds =
+      clubRows.map((club) => club.clubId);
+
+    if (clubIds.length > 0) {
+      await connection.query(
+        `
+        DELETE FROM favorites
+        WHERE clubId IN (?)
+        `,
+        [clubIds]
+      );
+
+      await connection.query(
+        `
+        DELETE FROM reviews
+        WHERE clubId IN (?)
+        `,
+        [clubIds]
+      );
+
+      await connection.query(
+        `
+        DELETE FROM reports
+        WHERE clubId IN (?)
+        `,
+        [clubIds]
+      );
+
+      await connection.query(
+        `
+        DELETE FROM clubLinks
+        WHERE clubId IN (?)
+        `,
+        [clubIds]
+      );
+
+      await connection.query(
+        `
+        DELETE FROM histories
+        WHERE clubId IN (?)
+        `,
+        [clubIds]
+      );
+    }
+
+    await connection.query(
+      `
+      DELETE FROM favorites
+      WHERE userId = ?
+      `,
+      [userId]
+    );
+
+    await connection.query(
+      `
+      DELETE FROM reviews
+      WHERE userId = ?
+      `,
+      [userId]
+    );
+
+    await connection.query(
+      `
+      DELETE FROM reports
+      WHERE userId = ?
+      `,
+      [userId]
+    );
+
+    await connection.query(
+      `
+      DELETE FROM histories
+      WHERE userId = ?
+      `,
+      [userId]
+    );
+
+    if (clubIds.length > 0) {
+      await connection.query(
+        `
+        DELETE FROM clubs
+        WHERE clubId IN (?)
+        `,
+        [clubIds]
+      );
+    }
+
+    const [result] =
+      await connection.query(
+        `
+        DELETE FROM users
+        WHERE userId = ?
+        `,
+        [userId]
+      );
+
+    await connection.commit();
+
+    return {
+      deletedUserCount:
+        result.affectedRows,
+      deletedClubCount:
+        clubIds.length
+    };
+
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+
+  } finally {
+    connection.release();
+  }
 };
 
 exports.countMyClubs = async (
