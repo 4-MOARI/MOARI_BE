@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const db = require('../database/db');
 
@@ -125,6 +126,18 @@ const loginService = async (userId, password) => {
 
   const user = users[0];
 
+  const token = jwt.sign(
+  {
+    userId: user.userId,
+    email: user.email,
+    schoolId: user.schoolId
+  },
+  process.env.JWT_SECRET,
+  {
+    expiresIn: process.env.JWT_EXPIRES_IN || '1d'
+  }
+);
+
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
@@ -132,12 +145,15 @@ const loginService = async (userId, password) => {
   }
 
   return {
+  token,
+  user: {
     userId: user.userId,
     userName: user.userName,
     email: user.email,
     schoolId: user.schoolId,
     isVerified: user.isVerified
-  };
+  }
+};
 };
 
 const findIdService = async (email) => {
