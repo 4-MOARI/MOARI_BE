@@ -5,14 +5,13 @@ const router = express.Router();
 const userController =
   require('../controllers/userController');
 
-// authMiddleware 구현 후 활성화 예정
-// const verifyToken =
-//   require('../middlewares/authMiddleware');
+const verifyToken =
+  require('../middlewares/authMiddleware');
 
 router.get(
   '/users/me',
 
-  // verifyToken,
+  verifyToken,
 
   userController.getMyProfile
 );
@@ -20,7 +19,7 @@ router.get(
 router.post(
   '/users/me/password/verify',
 
-  // verifyToken,
+  verifyToken,
 
   userController.verifyMyPassword
 );
@@ -28,7 +27,7 @@ router.post(
 router.patch(
   '/users/me/password',
 
-  // verifyToken,
+  verifyToken,
 
   userController.changeMyPassword
 );
@@ -36,7 +35,7 @@ router.patch(
 router.delete(
   '/users/me',
 
-  // verifyToken,
+  verifyToken,
 
   userController.deleteMyAccount
 );
@@ -44,7 +43,7 @@ router.delete(
 router.get(
   '/users/me/favorites',
 
-  // verifyToken,
+  verifyToken,
 
   userController.getMyFavoriteClubs
 );
@@ -52,7 +51,7 @@ router.get(
 router.get(
   '/users/me/clubs',
 
-  // verifyToken,
+  verifyToken,
 
   userController.getMyClubs
 );

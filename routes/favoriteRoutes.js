@@ -5,14 +5,13 @@ const router = express.Router();
 const favoriteController =
   require('../controllers/favoriteController');
 
-// authMiddleware 구현 후 활성화 예정
-// const verifyToken =
-//   require('../middlewares/authMiddleware');
+const verifyToken =
+  require('../middlewares/authMiddleware');
 
 router.post(
   '/clubs/:clubId/favorites',
 
-  // verifyToken,
+  verifyToken,
 
   favoriteController.createFavorite
 );
@@ -20,7 +19,7 @@ router.post(
 router.delete(
   '/clubs/:clubId/favorites',
 
-  // verifyToken,
+  verifyToken,
 
   favoriteController.deleteFavorite
 );
@@ -28,7 +27,7 @@ router.delete(
 router.get(
   '/clubs/:clubId/favorites',
 
-  // verifyToken,
+  verifyToken,
 
   favoriteController.getFavoriteStatus
 );

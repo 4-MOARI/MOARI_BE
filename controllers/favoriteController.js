@@ -10,9 +10,8 @@ exports.createFavorite = async (
     const clubId =
       Number(req.params.clubId);
 
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await favoriteService.createFavorite({
@@ -40,9 +39,8 @@ exports.deleteFavorite = async (
     const clubId =
       Number(req.params.clubId);
 
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await favoriteService.deleteFavorite({
@@ -70,9 +68,8 @@ exports.getFavoriteStatus = async (
     const clubId =
       Number(req.params.clubId);
 
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await favoriteService.getFavoriteStatus({
