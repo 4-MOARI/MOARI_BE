@@ -6,6 +6,8 @@ const reportRoutes =
     require('./routes/reportRoutes');
 //검색 API 추가
 const clubRoutes = require('./routes/clubRoutes');
+const favoriteRoutes =
+    require('./routes/favoriteRoutes');
 
 const { errorHandler } = require('./middlewares/errorHandler');
 
@@ -22,6 +24,7 @@ app.use(reviewRoutes);
 app.use('/api', reportRoutes);
 //검색 API 추가
 app.use('/api', clubRoutes);
+app.use('/api', favoriteRoutes);
 
 app.use(errorHandler);
 
