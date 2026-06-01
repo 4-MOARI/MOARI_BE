@@ -22,3 +22,20 @@ exports.getClubs = async (req, res, next) => {
     next(error);
   }
 };
+
+// 동아리 수정 로그 조회
+exports.getClubHistory = async (req, res, next) => {
+  try {
+    const clubId = Number(req.params.clubId);
+
+    const result = await clubService.getClubHistory(clubId);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+  } catch (error) {
+    next(error);
+  }
+};

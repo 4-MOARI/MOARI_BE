@@ -23,3 +23,30 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort 
     clubs
   };
 };
+
+exports.getClubHistory = async (clubId) => {
+  // clubId 유효성 검사
+  if (!clubId || isNaN(clubId)) {
+    const error = new Error('올바르지 않은 동아리 ID입니다.');
+    error.status = 400;
+    error.code = 'CLUB_400';
+    throw error;
+  }
+
+  // 동아리 존재 여부 확인
+  const club = await clubModel.findClubById(clubId);
+  if (!club) {
+    const error = new Error('해당 동아리를 찾을 수 없습니다.');
+    error.status = 400;
+    error.code = 'CLUB_404';
+    throw error;
+  }
+
+  // 수정 로그 조회
+  const history = await clubModel.getClubHistory(clubId);
+
+  return {
+    clubId: Number(clubId),
+    history
+  };
+};
