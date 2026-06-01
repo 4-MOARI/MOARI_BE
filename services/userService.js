@@ -1,9 +1,12 @@
 const userModel =
   require('../models/userModel');
+const bcrypt =
+  require('bcrypt');
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 6;
 const MAX_LIMIT = 50;
+const PASSWORD_SALT_ROUNDS = 10;
 
 const createNotFoundError = () => {
   const error =
@@ -15,6 +18,81 @@ const createNotFoundError = () => {
   error.code = 'USER_404';
 
   return error;
+};
+
+const createBadRequestError = (
+  message = '잘못된 요청입니다.'
+) => {
+  const error =
+    new Error(message);
+
+  error.status = 400;
+  error.code = 'USER_400';
+
+  return error;
+};
+
+const createPasswordMismatchError = () => {
+  const error =
+    new Error(
+      '비밀번호가 일치하지 않습니다.'
+    );
+
+  error.status = 401;
+  error.code = 'PASSWORD_MISMATCH';
+
+  return error;
+};
+
+const isBcryptHash = (password) => (
+  typeof password === 'string' &&
+  /^\$2[aby]\$\d{2}\$/.test(password)
+);
+
+const comparePassword = async ({
+  plainPassword,
+  savedPassword
+}) => {
+  if (isBcryptHash(savedPassword)) {
+    return bcrypt.compare(
+      plainPassword,
+      savedPassword
+    );
+  }
+
+  return plainPassword === savedPassword;
+};
+
+const validatePasswordInput = ({
+  currentPassword,
+  newPassword
+}) => {
+  if (
+    typeof currentPassword !== 'string' ||
+    currentPassword.trim() === ''
+  ) {
+    throw createBadRequestError(
+      '현재 비밀번호를 입력해주세요.'
+    );
+  }
+
+  if (
+    typeof newPassword !== 'string' ||
+    newPassword.trim() === ''
+  ) {
+    throw createBadRequestError(
+      '새 비밀번호를 입력해주세요.'
+    );
+  }
+
+  if (
+    newPassword.length < 8 ||
+    newPassword.length > 50
+  ) {
+    throw createBadRequestError(
+      '새 비밀번호는 8자 이상 50자 이하로 입력해주세요.'
+    );
+  }
 };
 
 const getPagination = ({
@@ -116,6 +194,116 @@ exports.getMyProfile = async (
       schoolDomain:
         user.schoolDomain
     }
+  };
+};
+
+exports.verifyMyPassword = async ({
+  userId,
+  password
+}) => {
+  if (
+    typeof password !== 'string' ||
+    password.trim() === ''
+  ) {
+    throw createBadRequestError(
+      '비밀번호를 입력해주세요.'
+    );
+  }
+
+  const user =
+    await userModel.findPasswordByUserId(
+      userId
+    );
+
+  if (!user) {
+    throw createNotFoundError();
+  }
+
+  const isMatched =
+    await comparePassword({
+      plainPassword: password,
+      savedPassword:
+        user.password
+    });
+
+  if (!isMatched) {
+    throw createPasswordMismatchError();
+  }
+
+  return {
+    isMatched: true
+  };
+};
+
+exports.changeMyPassword = async ({
+  userId,
+  currentPassword,
+  newPassword
+}) => {
+  validatePasswordInput({
+    currentPassword,
+    newPassword
+  });
+
+  const user =
+    await userModel.findPasswordByUserId(
+      userId
+    );
+
+  if (!user) {
+    throw createNotFoundError();
+  }
+
+  const isMatched =
+    await comparePassword({
+      plainPassword:
+        currentPassword,
+      savedPassword:
+        user.password
+    });
+
+  if (!isMatched) {
+    throw createPasswordMismatchError();
+  }
+
+  const hashedPassword =
+    await bcrypt.hash(
+      newPassword,
+      PASSWORD_SALT_ROUNDS
+    );
+
+  await userModel.updatePassword({
+    userId,
+    password:
+      hashedPassword
+  });
+
+  return {
+    userId
+  };
+};
+
+exports.deleteMyAccount = async (
+  userId
+) => {
+  const user =
+    await userModel.findPasswordByUserId(
+      userId
+    );
+
+  if (!user) {
+    throw createNotFoundError();
+  }
+
+  const result =
+    await userModel.deleteMyAccount(
+      userId
+    );
+
+  return {
+    userId,
+    deletedClubCount:
+      result.deletedClubCount
   };
 };
 

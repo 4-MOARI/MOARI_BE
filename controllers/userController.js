@@ -27,6 +27,90 @@ exports.getMyProfile = async (
   }
 };
 
+exports.verifyMyPassword = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    // const userId =
+    //   req.user.userId;
+    const userId = '1';
+
+    const result =
+      await userService.verifyMyPassword({
+        userId,
+        password:
+          req.body.password
+      });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.changeMyPassword = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    // const userId =
+    //   req.user.userId;
+    const userId = '1';
+
+    const result =
+      await userService.changeMyPassword({
+        userId,
+        currentPassword:
+          req.body.currentPassword,
+        newPassword:
+          req.body.newPassword
+      });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteMyAccount = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    // const userId =
+    //   req.user.userId;
+    const userId = '1';
+
+    const result =
+      await userService.deleteMyAccount(
+        userId
+      );
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getMyFavoriteClubs = async (
   req,
   res,
