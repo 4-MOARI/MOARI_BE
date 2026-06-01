@@ -12,9 +12,9 @@ exports.createClubReport = async (
     const clubId =
       Number(req.params.clubId);
 
-    // const userId =
-    //   req.user.userId;
-    const userId = 1;
+    const userId =
+      req.user.userId;
+    //const userId = 1;
 
     const {
       reasonCode,

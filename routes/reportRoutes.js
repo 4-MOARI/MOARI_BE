@@ -5,14 +5,14 @@ const router = express.Router();
 const reportController =
   require('../controllers/reportController');
 
-// const verifyToken =
-//   require('../middlewares/authMiddleware');
+const verifyToken =
+  require('../middlewares/authMiddleware');
 
 // 동아리 신고 API
 router.post(
   '/clubs/:clubId/reports',
 
-  // verifyToken,
+  verifyToken,
 
   reportController.createClubReport
 );
@@ -21,7 +21,7 @@ router.post(
 router.get(
   '/clubs/:clubId/reports/summary',
 
-  // verifyToken,
+  verifyToken,
   
   reportController.getReportSummary
 );
