@@ -84,3 +84,25 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort 
   const [rows] = await db.query(query, params);
   return rows;
 };
+
+// 수정 로그 조회
+exports.getClubHistory = async (clubId) => {
+  const [rows] = await db.query(
+    `
+    SELECT 
+      h.historyId,
+      u.userName AS modifier,
+      h.modifiedField,
+      h.oldValue,
+      h.newValue,
+      h.createdAt
+    FROM histories h
+    LEFT JOIN users u ON h.userId = u.userId
+    WHERE h.clubId = ?
+    AND h.createdAt >= DATE_SUB(NOW(), INTERVAL 1 YEAR)
+    ORDER BY h.createdAt DESC
+    `,
+    [clubId]
+  );
+  return rows;
+};
