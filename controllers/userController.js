@@ -7,9 +7,8 @@ exports.getMyProfile = async (
   next
 ) => {
   try {
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await userService.getMyProfile(
@@ -33,9 +32,8 @@ exports.verifyMyPassword = async (
   next
 ) => {
   try {
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await userService.verifyMyPassword({
@@ -61,9 +59,8 @@ exports.changeMyPassword = async (
   next
 ) => {
   try {
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await userService.changeMyPassword({
@@ -91,9 +88,8 @@ exports.deleteMyAccount = async (
   next
 ) => {
   try {
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await userService.deleteMyAccount(
@@ -117,9 +113,8 @@ exports.getMyFavoriteClubs = async (
   next
 ) => {
   try {
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await userService.getMyFavoriteClubs({
@@ -145,9 +140,8 @@ exports.getMyClubs = async (
   next
 ) => {
   try {
-    // const userId =
-    //   req.user.userId;
-    const userId = '1';
+    const userId =
+      req.user.userId;
 
     const result =
       await userService.getMyClubs({
