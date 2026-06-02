@@ -339,3 +339,48 @@ exports.findMyClubs = async ({
 
   return rows;
 };
+
+exports.countMyReviews = async (
+  userId
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT COUNT(*) AS totalCount
+    FROM reviews
+    WHERE userId = ?
+    `,
+    [userId]
+  );
+
+  return Number(rows[0].totalCount);
+};
+
+exports.findMyReviews = async ({
+  userId,
+  limit,
+  offset
+}) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      r.reviewId,
+      r.userId,
+      r.clubId,
+      c.clubName,
+      r.rating,
+      r.content,
+      r.createdAt
+    FROM reviews r
+    INNER JOIN clubs c
+      ON r.clubId = c.clubId
+    WHERE r.userId = ?
+    ORDER BY r.createdAt DESC
+    LIMIT ? OFFSET ?
+    `,
+    [userId, limit, offset]
+  );
+
+  return rows;
+};

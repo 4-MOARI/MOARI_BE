@@ -160,3 +160,30 @@ exports.getMyClubs = async (
     next(error);
   }
 };
+
+exports.getMyReviews = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const userId =
+      req.user.userId;
+
+    const result =
+      await userService.getMyReviews({
+        userId,
+        page: req.query.page,
+        limit: req.query.limit
+      });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};

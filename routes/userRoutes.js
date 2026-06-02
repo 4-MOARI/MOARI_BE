@@ -56,4 +56,12 @@ router.get(
   userController.getMyClubs
 );
 
+router.get(
+  '/users/me/reviews',
+
+  verifyToken,
+
+  userController.getMyReviews
+);
+
 module.exports = router;
