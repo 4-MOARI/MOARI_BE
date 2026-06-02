@@ -385,3 +385,47 @@ exports.getMyClubs = async ({
       }))
   };
 };
+
+exports.getMyReviews = async ({
+  userId,
+  page,
+  limit
+}) => {
+  const pagination =
+    getPagination({
+      page,
+      limit
+    });
+
+  const totalCount =
+    await userModel.countMyReviews(
+      userId
+    );
+
+  const reviews =
+    await userModel.findMyReviews({
+      userId,
+      limit: pagination.limit,
+      offset: pagination.offset
+    });
+
+  return {
+    page: pagination.page,
+    limit: pagination.limit,
+    totalCount,
+    totalPages:
+      Math.ceil(
+        totalCount / pagination.limit
+      ),
+    reviews:
+      reviews.map((review) => ({
+        reviewId: review.reviewId,
+        userId: review.userId,
+        clubId: review.clubId,
+        clubName: review.clubName,
+        rating: Number(review.rating || 0),
+        content: review.content,
+        createdAt: review.createdAt
+      }))
+  };
+};
