@@ -16,12 +16,48 @@ exports.findClubById = async (clubId) => {
 };
 
 // 동아리 목록 조회 (검색/필터/정렬)
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort }) => {
-  let query = `
+// ✅ 이렇게 수정
+exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize }) => {
+  // ✅ WHERE 조건과 파라미터는 COUNT/목록 쿼리가 공유
+  let whereClause = ` WHERE 1=1`;
+  const params = [];
+
+  if (keyword) {
+    whereClause += ` AND (c.clubName LIKE ? OR c.description LIKE ? OR c.activity LIKE ?)`;
+    params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+  }
+  if (categoryId) {
+    whereClause += ` AND c.categoryId = ?`;
+    params.push(categoryId);
+  }
+  if (isRecruiting === 'true') {
+    whereClause += ` AND c.recruitStartAt <= NOW() AND c.recruitEndAt >= NOW()`;
+  } else if (isRecruiting === 'false') {
+    whereClause += ` AND (c.recruitEndAt < NOW() OR c.recruitEndAt IS NULL)`;
+  }
+  if (schoolType === 'internal') {
+    whereClause += ` AND c.schoolId IS NOT NULL`;
+  } else if (schoolType === 'external') {
+    whereClause += ` AND c.schoolId IS NULL`;
+  }
+
+  // ✅ 전체 개수 조회 (페이지네이션과 무관하게 필터 조건만 적용)
+  const countQuery = `
+    SELECT COUNT(DISTINCT c.clubId) AS totalCount
+    FROM clubs c
+    LEFT JOIN categories cat ON c.categoryId = cat.categoryId
+    LEFT JOIN favorites f ON c.clubId = f.clubId
+    LEFT JOIN reviews r ON c.clubId = r.clubId
+    ${whereClause}
+  `;
+  const [[{ totalCount }]] = await db.query(countQuery, params);
+
+  // 목록 쿼리
+  let listQuery = `
     SELECT 
       c.clubId,
       c.clubName,
-      c.briefDescription,
+      c.briefDescription AS description,
       c.categoryId,
       cat.categoryName,
       c.recruitStartAt,
@@ -38,57 +74,47 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort 
     LEFT JOIN categories cat ON c.categoryId = cat.categoryId
     LEFT JOIN favorites f ON c.clubId = f.clubId
     LEFT JOIN reviews r ON c.clubId = r.clubId
-    WHERE 1=1
+    ${whereClause}
+    GROUP BY c.clubId, c.clubName, c.briefDescription, c.categoryId, cat.categoryName,
+             c.recruitStartAt, c.recruitEndAt, c.coverImageUrl, c.updatedAt, c.schoolId
   `;
 
-  const params = [];
-
-  if (keyword) {
-    query += ` AND (c.clubName LIKE ? OR c.description LIKE ? OR c.activity LIKE ?)`;
-    params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
-  }
-
-  if (categoryId) {
-    query += ` AND c.categoryId = ?`;
-    params.push(categoryId);
-  }
-
-  if (isRecruiting === 'true') {
-    query += ` AND c.recruitStartAt <= NOW() AND c.recruitEndAt >= NOW()`;
-  } else if (isRecruiting === 'false') {
-    query += ` AND (c.recruitEndAt < NOW() OR c.recruitEndAt IS NULL)`;
-  }
-
-  if (schoolType === 'internal') {
-    query += ` AND c.schoolId IS NOT NULL`;
-  } else if (schoolType === 'external') {
-    query += ` AND c.schoolId IS NULL`;
-  }
-
-  query += ` GROUP BY c.clubId, c.clubName, c.briefDescription, c.categoryId, cat.categoryName, c.recruitStartAt, c.recruitEndAt, c.coverImageUrl, c.updatedAt, c.schoolId`;
-
-  // 정렬: 오래된 동아리(6개월 이상) 하단으로
   const staleDateThreshold = `DATE_SUB(NOW(), INTERVAL 6 MONTH)`;
-
   if (sort === 'favoriteCount') {
-    query += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, favoriteCount DESC`;
+    listQuery += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, favoriteCount DESC`;
   } else if (sort === 'rating') {
-    query += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, avgRating DESC`;
+    listQuery += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, avgRating DESC`;
   } else if (sort === 'name') {
-    query += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, c.clubName ASC`;
+    listQuery += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, c.clubName ASC`;
   } else {
-    query += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, c.updatedAt DESC`;
+    listQuery += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, c.updatedAt DESC`;
   }
 
-  const [rows] = await db.query(query, params);
-  return rows;
+  // ✅ LIMIT / OFFSET 추가
+  const offset = (page - 1) * pageSize;
+  listQuery += ` LIMIT ? OFFSET ?`;
+  params.push(pageSize, offset);
+
+  const [rows] = await db.query(listQuery, params);
+
+  // ✅ totalCount와 clubs를 함께 반환 (서비스에서 totalPages 계산에 사용)
+  return { clubs: rows, totalCount };
 };
 
 // 수정 로그 조회
-exports.getClubHistory = async (clubId) => {
+exports.getClubHistory = async (clubId, { page, pageSize }) => {
+  const [[{ totalCount }]] = await db.query(
+    `SELECT COUNT(*) AS totalCount
+     FROM histories
+     WHERE clubId = ?
+     AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 YEAR)`,
+    [clubId]
+  );
+
+  const offset = (page - 1) * pageSize;
+
   const [rows] = await db.query(
-    `
-    SELECT 
+    `SELECT 
       h.historyId,
       u.userName AS modifier,
       h.modifiedField,
@@ -100,10 +126,11 @@ exports.getClubHistory = async (clubId) => {
     WHERE h.clubId = ?
     AND h.createdAt >= DATE_SUB(NOW(), INTERVAL 1 YEAR)
     ORDER BY h.createdAt DESC
-    `,
-    [clubId]
+    LIMIT ? OFFSET ?`,
+    [clubId, pageSize, offset]
   );
-  return rows;
+
+  return { history: rows, totalCount };
 };
 
 
