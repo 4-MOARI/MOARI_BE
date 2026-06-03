@@ -35,8 +35,10 @@ exports.getClubReviews = async (req, res, next ) => {
     try {
         const clubId = Number(req.params.clubId);
 
+        const userId = req.user.userId;
+
         const result = 
-            await reviewService.getClubReviews( clubId );
+            await reviewService.getClubReviews( clubId, userId );
 
         return res.status(200).json({
             success: true,
