@@ -136,6 +136,16 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
       Number(review.userId) ===
       Number(loginUserId),
   }));
+//콘솔찍어봄!(삭제예정)
+  console.log(
+    "review.userId =",
+    review.userId
+  );
+
+  console.log(
+    "loginUserId =",
+    loginUserId
+  );
 
   return {
     clubId,
