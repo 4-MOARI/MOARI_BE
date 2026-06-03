@@ -32,9 +32,11 @@ router.get(
 
     '/api/clubs/:clubId/reviews',
 
+    verifyToken,
+
     reviewController.getClubReviews,
 
-    verifyToken
+    
 
 );
 
