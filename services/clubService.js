@@ -63,6 +63,8 @@ exports.getClubHistory = async (clubId, { page, pageSize } = {}) => {
 
   return {
     clubId: Number(clubId),
+    clubName: club.clubName,
+    profileImageUrl: club.profileImageUrl || null,
     totalCount,
     totalPages,
     currentPage: parsedPage,
