@@ -21,6 +21,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 app.use(reviewRoutes);
 app.use('/api', reportRoutes);
@@ -30,11 +31,5 @@ app.use('/api', favoriteRoutes);
 app.use('/api', userRoutes);
 
 app.use(errorHandler);
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
 
 module.exports = app;
