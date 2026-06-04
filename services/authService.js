@@ -1,3 +1,4 @@
+const { sendVerificationEmail } = require('./mailService');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const db = require('../database/db');
@@ -46,13 +47,15 @@ const sendVerificationCodeService = async (email, schoolId) => {
   verificationCodes[email] = {
     code,
     schoolId,
-    isVerified: false
+    isVerified: false,
   };
 
   console.log(`[회원가입 이메일 인증번호] ${email}: ${code}`);
 
+  await sendVerificationEmail(email, code);
+
   return {
-    message: '인증번호가 발송되었습니다.'
+    message: '인증번호가 발송되었습니다.',
   };
 };
 
@@ -68,7 +71,7 @@ const verifyCodeService = async (email, code) => {
   return {
     email,
     schoolId: saved.schoolId,
-    isVerified: true
+    isVerified: true,
   };
 };
 
@@ -110,7 +113,7 @@ const signupService = async ({ userId, userName, password, email }) => {
     userName,
     email,
     isVerified: true,
-    schoolId: verifiedInfo.schoolId
+    schoolId: verifiedInfo.schoolId,
   };
 };
 
@@ -126,34 +129,34 @@ const loginService = async (userId, password) => {
 
   const user = users[0];
 
-  const token = jwt.sign(
-  {
-    userId: user.userId,
-    email: user.email,
-    schoolId: user.schoolId
-  },
-  process.env.JWT_SECRET,
-  {
-    expiresIn: process.env.JWT_EXPIRES_IN || '1d'
-  }
-);
-
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
     throw { status: 401, code: 'AUTH_4011', message: '비밀번호가 일치하지 않습니다.' };
   }
 
+  const token = jwt.sign(
+    {
+      userId: user.userId,
+      email: user.email,
+      schoolId: user.schoolId,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+    }
+  );
+
   return {
-  token,
-  user: {
-    userId: user.userId,
-    userName: user.userName,
-    email: user.email,
-    schoolId: user.schoolId,
-    isVerified: user.isVerified
-  }
-};
+    token,
+    user: {
+      userId: user.userId,
+      userName: user.userName,
+      email: user.email,
+      schoolId: user.schoolId,
+      isVerified: user.isVerified,
+    },
+  };
 };
 
 const findIdService = async (email) => {
@@ -167,7 +170,7 @@ const findIdService = async (email) => {
   }
 
   return {
-    maskedUserId: maskUserId(users[0].userId)
+    maskedUserId: maskUserId(users[0].userId),
   };
 };
 
@@ -186,13 +189,15 @@ const sendPasswordCodeService = async (email) => {
   verificationCodes[email] = {
     code,
     isVerified: false,
-    type: 'PASSWORD_RESET'
+    type: 'PASSWORD_RESET',
   };
 
   console.log(`[비밀번호 재설정 인증번호] ${email}: ${code}`);
 
+  await sendVerificationEmail(email, code);
+
   return {
-    message: '비밀번호 재설정 인증번호가 발송되었습니다.'
+    message: '비밀번호 재설정 인증번호가 발송되었습니다.',
   };
 };
 
@@ -223,7 +228,7 @@ const resetPasswordService = async (email, code, newPassword, confirmPassword) =
   );
 
   return {
-    message: '비밀번호가 변경되었습니다.'
+    message: '비밀번호가 변경되었습니다.',
   };
 };
 
@@ -234,5 +239,5 @@ module.exports = {
   loginService,
   findIdService,
   sendPasswordCodeService,
-  resetPasswordService
+  resetPasswordService,
 };
