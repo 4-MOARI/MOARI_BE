@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api/crawl';
+const API_URL = 'http://34.50.19.72:3000/api/crawl';
 
 const axios = require('axios');
 const cheerio = require('cheerio');
@@ -65,16 +65,17 @@ async function crawlSungshin() {
             briefDescription: makeBriefDescription(mainActivity, field),
             description: null,
             activity:
-`분야: ${field || '-'}
-동아리실: ${clubRoom || '-'}
-동아리 지위: ${clubStatus || '-'}
-주요 활동: ${mainActivity || '-'}`,
+            `분야: ${field || '-'}
+            동아리실: ${clubRoom || '-'}
+            동아리 지위: ${clubStatus || '-'}
+            주요 활동: ${mainActivity || '-'}`,
             categoryId: categoryInfo.categoryId,
             schoolId: 1,
             profileImageUrl: null,
             coverImageUrl: null,
             recruitStartAt: null,
             recruitEndAt: null,
+            lastModifiedBy: 'test01',
             links: []
           });
         });
@@ -92,8 +93,19 @@ async function crawlSungshin() {
         console.log('DB 저장 결과:');
         console.log(JSON.stringify(saveResponse.data, null, 2));
   } catch (error) {
-    console.error(error);
-  }
+        console.log('===== 서버 응답 =====');
+
+        if (error.response) {
+            console.log('status:', error.response.status);
+            console.log(
+            JSON.stringify(error.response.data, null, 2)
+            );
+        } else {
+            console.log(error);
+        }
+
+        console.log('===================');
+        }
 }
 
 crawlSungshin();
