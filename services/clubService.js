@@ -51,7 +51,7 @@ exports.getClubHistory = async (clubId) => {
   };
 };
 
-// 크롤링 동아리 정보 기본 적재 API 서비스
+// 크롤링 동아리 정보 + 링크 통합 적재 API 서비스
 exports.crawlClubs = async (clubDataList) => {
   if (!Array.isArray(clubDataList) || clubDataList.length === 0) {
     const error = new Error('적재할 크롤링 데이터가 올바르지 않거나 비어있습니다.');
@@ -59,19 +59,83 @@ exports.crawlClubs = async (clubDataList) => {
     throw error;
   }
 
-  const sanitizedList = clubDataList.map(club => ({
-    clubName: club.clubName,
-    briefDescription: club.briefDescription || null,
-    description: club.description || null,
-    categoryId: club.categoryId ? Number(club.categoryId) : null,
-    coverImageUrl: club.coverImageUrl || null,
-    activity: club.activity || null,
-    recruitStartAt: club.recruitStartAt || null,
-    recruitEndAt: club.recruitEndAt || null
-  }));
+  const results = [];
 
-  const insertedCount = await clubModel.bulkInsertCrawlClubs(sanitizedList);
-  return { message: `${insertedCount}개의 동아리 기본 정보가 성공적으로 적재되었습니다.` };
+  for (const clubData of clubDataList) {
+    if (!clubData.clubName || clubData.clubName.trim() === '') {
+      continue;
+    }
+
+    if (!clubData.categoryId || isNaN(clubData.categoryId)) {
+      continue;
+    }
+
+    const safeClubData = {
+      clubName: clubData.clubName,
+      briefDescription: clubData.briefDescription || null,
+      description: clubData.description || null,
+      activity: clubData.activity || null,
+      recruitStartAt: clubData.recruitStartAt || null,
+      recruitEndAt: clubData.recruitEndAt || null,
+      profileImageUrl: clubData.profileImageUrl || null,
+      coverImageUrl: clubData.coverImageUrl || null,
+      schoolId:
+        clubData.schoolId === null || clubData.schoolId === undefined
+          ? null
+          : Number(clubData.schoolId),
+      categoryId: Number(clubData.categoryId),
+      lastModifiedBy: clubData.lastModifiedBy || 'test_user_1'
+    };
+    const existingClub = await clubModel.findClubByNameAndSchool(
+      safeClubData.clubName,
+      safeClubData.schoolId
+    );
+
+    if (existingClub) {
+      results.push({
+        clubId: existingClub.clubId,
+        clubName: existingClub.clubName,
+        status: 'SKIPPED_DUPLICATE',
+        savedLinkCount: 0
+      });
+
+      continue;
+    }
+
+    const newClubId = await clubModel.createCrawledClub(safeClubData);
+
+    let savedLinks = [];
+
+    if (
+      clubData.links &&
+      Array.isArray(clubData.links) &&
+      clubData.links.length > 0
+    ) {
+      const formattedLinks = clubData.links
+        .map(link => ({
+          linkType: link.linkType,
+          linkTitle: link.linkTitle || link.linkType,
+          linkUrl: link.linkUrl
+        }))
+        .filter(link => link.linkType && link.linkUrl && link.linkUrl.trim() !== '');
+
+      if (formattedLinks.length > 0) {
+        savedLinks = await clubModel.insertClubLinks(newClubId, formattedLinks);
+      }
+    }
+
+    results.push({
+      clubId: newClubId,
+      clubName: clubData.clubName,
+      savedLinkCount: savedLinks.length
+    });
+  }
+
+  return {
+    status: 'SUCCESS',
+    recordedCount: results.length,
+    clubs: results
+  };
 };
 
 // 크롤링 동아리 외부 링크 매핑 저장 API 서비스
@@ -97,8 +161,9 @@ exports.saveClubLinks = async (clubId, linkData) => {
 
   const validLinks = linkData.links.map(link => ({
     linkType: link.linkType,
+    linkTitle: link.linkTitle || link.linkType,
     linkUrl: link.linkUrl
-  })).filter(link => link.linkUrl && link.linkUrl.trim() !== '');
+  })).filter(link => link.linkType && link.linkUrl && link.linkUrl.trim() !== '');
 
   const savedLinks = await clubModel.insertClubLinks(clubId, validLinks);
   return { clubId: Number(clubId), savedLinks };

@@ -20,10 +20,13 @@ router.get('/categories', clubController.getCategories);
 // 동아리 상세페이지 UI 데이터 조회 API
 router.get('/:clubId', clubController.getClubDetail);
 
+
 // 동아리 수정 API
+router.patch('/clubs/:clubId/update', clubController.updateClub);
 router.patch('/:clubId/update', clubController.updateClub);
 
 // 동아리 등록 API
+router.get('/clubs/:clubId', clubController.getClubDetail);
 router.post('/register', clubController.registerClub);
 
 module.exports = router;

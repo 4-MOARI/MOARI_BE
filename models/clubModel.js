@@ -15,6 +15,20 @@ exports.findClubById = async (clubId) => {
   return rows[0];
 };
 
+exports.findClubByNameAndSchool = async (clubName, schoolId) => {
+  const [rows] = await db.query(
+    `
+    SELECT clubId, clubName, schoolId
+    FROM clubs
+    WHERE clubName = ?
+    AND schoolId = ?
+    `,
+    [clubName, schoolId]
+  );
+
+  return rows[0];
+};
+
 // 동아리 목록 조회 (검색/필터/정렬)
 exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort }) => {
   let query = `
@@ -107,48 +121,57 @@ exports.getClubHistory = async (clubId) => {
 };
 
 
-// 크롤링 동아리 정보 대량 적재 (Bulk Insert)
-exports.bulkInsertCrawlClubs = async (clubDataList) => {
-  let insertedCount = 0;
-  for (const club of clubDataList) {
-    const [result] = await db.query(
-      `
-      INSERT INTO clubs (clubName, briefDescription, description, categoryId, coverImageUrl, activity, recruitStartAt, recruitEndAt, lastModifiedBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        club.clubName,
-        club.briefDescription || null,
-        club.description || null,
-        club.categoryId || null,
-        club.coverImageUrl || null,
-        club.activity || null,
-        club.recruitStartAt || null,
-        club.recruitEndAt || null,
-        'test_user_1'
-      ]
-    );
-    if (result.affectedRows > 0) insertedCount++;
-  }
-  return insertedCount;
+// 크롤링 동아리 1개 적재
+exports.createCrawledClub = async (clubData) => {
+  const [result] = await db.query(
+    `
+    INSERT INTO clubs (
+      clubName, briefDescription, description, activity,
+      recruitStartAt, recruitEndAt, profileImageUrl, coverImageUrl,
+      schoolId, categoryId, lastModifiedBy
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      clubData.clubName,
+      clubData.briefDescription,
+      clubData.description,
+      clubData.activity,
+      clubData.recruitStartAt,
+      clubData.recruitEndAt,
+      clubData.profileImageUrl,
+      clubData.coverImageUrl,
+      clubData.schoolId,
+      clubData.categoryId,
+      clubData.lastModifiedBy
+    ]
+  );
+
+  return result.insertId;
 };
 
-// 크롤링 동아리 외부 링크 매핑 저장 (기본 데이터 규격화 유지)
+// 동아리 외부 링크 저장
 exports.insertClubLinks = async (clubId, links) => {
   if (!links || links.length === 0) return [];
   
   const savedLinks = [];
+
   for (const link of links) {
-    // 테이블 스펙이 clublinks 일 수 있으므로 매핑 (기존 코드의 소문자 table명 대응)
     await db.query(
       `
-      INSERT INTO clublinks (clubId, linkType, linkUrl)
-      VALUES (?, ?, ?)
+      INSERT INTO clubLinks (clubId, linkType, linkTitle, linkUrl)
+      VALUES (?, ?, ?, ?)
       `,
-      [clubId, link.linkType, link.linkUrl]
+      [
+        clubId,
+        link.linkType,
+        link.linkTitle || link.linkType,
+        link.linkUrl
+      ]
     );
+
     savedLinks.push(link);
   }
+
   return savedLinks;
 };
 
@@ -156,7 +179,7 @@ exports.insertClubLinks = async (clubId, links) => {
 exports.deleteClubLinksByClubId = async (clubId) => {
   const [result] = await db.query(
     `
-    DELETE FROM clublinks 
+    DELETE FROM clubLinks 
     WHERE clubId = ?
     `,
     [clubId]
@@ -193,12 +216,16 @@ exports.getClubDetailById = async (clubId) => {
 exports.findClubLinksByClubId = async (clubId) => {
   const [rows] = await db.query(
     `
-    SELECT linkType, linkUrl 
-    FROM clublinks 
+    SELECT 
+      linkType AS type,
+      linkTitle AS title,
+      linkUrl AS url
+    FROM clubLinks 
     WHERE clubId = ?
     `,
     [clubId]
   );
+
   return rows;
 };
 
