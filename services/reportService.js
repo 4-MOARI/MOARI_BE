@@ -103,7 +103,7 @@ exports.createClubReport = async ({
   } catch (error) {
 
     // UNIQUE(user_id, club_id)
-    if (err.code === 'ER_DUP_ENTRY') {
+    if (error.code === 'ER_DUP_ENTRY') {
 
       const error =
         new Error(
