@@ -244,7 +244,7 @@ exports.findClubLinksByClubId = async (clubId) => {
     `
     SELECT 
       linkType AS type,
-      linkTitle AS title,
+      linkType AS title,
       linkUrl AS url
     FROM clubLinks 
     WHERE clubId = ?
