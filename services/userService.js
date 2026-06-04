@@ -303,7 +303,9 @@ exports.deleteMyAccount = async (
   return {
     userId,
     deletedClubCount:
-      result.deletedClubCount
+      result.deletedClubCount,
+    preservedClubCount:
+      result.preservedClubCount
   };
 };
 

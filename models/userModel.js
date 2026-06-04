@@ -1,5 +1,9 @@
 const db = require('../database/db');
 
+const DELETED_USER_PREFIX = 'deleted_';
+const DELETED_USER_NAME = '알수없음';
+const DELETED_USER_PASSWORD = 'deleted-user-placeholder';
+
 exports.findPasswordByUserId = async (
   userId
 ) => {
@@ -142,6 +146,46 @@ exports.deleteMyAccount = async (
   try {
     await connection.beginTransaction();
 
+    const [schoolRows] =
+      await connection.query(
+        `
+        SELECT schoolId
+        FROM users
+        WHERE userId = ?
+        `,
+        [userId]
+      );
+
+    const fallbackSchoolId =
+      schoolRows[0]?.schoolId || 1;
+    const deletedUserId =
+      `${DELETED_USER_PREFIX}${userId}`.slice(0, 50);
+    const deletedUserEmail =
+      `${deletedUserId}@moari.local`;
+
+    await connection.query(
+      `
+      INSERT INTO users (
+        userId,
+        userName,
+        password,
+        email,
+        isVerified,
+        schoolId
+      )
+      VALUES (?, ?, ?, ?, TRUE, ?)
+      ON DUPLICATE KEY UPDATE
+        userName = VALUES(userName)
+      `,
+      [
+        deletedUserId,
+        DELETED_USER_NAME,
+        DELETED_USER_PASSWORD,
+        deletedUserEmail,
+        fallbackSchoolId
+      ]
+    );
+
     const [clubRows] =
       await connection.query(
         `
@@ -155,48 +199,6 @@ exports.deleteMyAccount = async (
     const clubIds =
       clubRows.map((club) => club.clubId);
 
-    if (clubIds.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM favorites
-        WHERE clubId IN (?)
-        `,
-        [clubIds]
-      );
-
-      await connection.query(
-        `
-        DELETE FROM reviews
-        WHERE clubId IN (?)
-        `,
-        [clubIds]
-      );
-
-      await connection.query(
-        `
-        DELETE FROM reports
-        WHERE clubId IN (?)
-        `,
-        [clubIds]
-      );
-
-      await connection.query(
-        `
-        DELETE FROM clubLinks
-        WHERE clubId IN (?)
-        `,
-        [clubIds]
-      );
-
-      await connection.query(
-        `
-        DELETE FROM histories
-        WHERE clubId IN (?)
-        `,
-        [clubIds]
-      );
-    }
-
     await connection.query(
       `
       DELETE FROM favorites
@@ -207,37 +209,39 @@ exports.deleteMyAccount = async (
 
     await connection.query(
       `
-      DELETE FROM reviews
+      UPDATE reviews
+      SET userId = ?
       WHERE userId = ?
       `,
-      [userId]
+      [deletedUserId, userId]
     );
 
     await connection.query(
       `
-      DELETE FROM reports
+      UPDATE reports
+      SET userId = ?
       WHERE userId = ?
       `,
-      [userId]
+      [deletedUserId, userId]
     );
 
     await connection.query(
       `
-      DELETE FROM histories
+      UPDATE histories
+      SET userId = ?
       WHERE userId = ?
       `,
-      [userId]
+      [deletedUserId, userId]
     );
 
-    if (clubIds.length > 0) {
-      await connection.query(
-        `
-        DELETE FROM clubs
-        WHERE clubId IN (?)
-        `,
-        [clubIds]
-      );
-    }
+    await connection.query(
+      `
+      UPDATE clubs
+      SET lastModifiedBy = ?
+      WHERE lastModifiedBy = ?
+      `,
+      [deletedUserId, userId]
+    );
 
     const [result] =
       await connection.query(
@@ -254,6 +258,8 @@ exports.deleteMyAccount = async (
       deletedUserCount:
         result.affectedRows,
       deletedClubCount:
+        0,
+      preservedClubCount:
         clubIds.length
     };
 
