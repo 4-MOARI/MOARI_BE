@@ -86,7 +86,7 @@ exports.createReview = async ({
 /**
  * 특정 동아리 리뷰 전체 조회
  */
-exports.getClubReviews = async (clubId) => {
+exports.getClubReviews = async (clubId, loginUserId ) => {
 
   // clubId 검증
   if (!clubId || isNaN(clubId)) {
@@ -128,6 +128,35 @@ exports.getClubReviews = async (clubId) => {
     await reviewModel.getReviewsByClubId(
       clubId
     );
+    //내가 쓴 리뷰
+//   const reviewsWithMine =
+//   reviews.map((review) => ({
+//     ...review,
+//     isMine:
+//       Number(review.userId) ===
+//       Number(loginUserId),
+//   }));
+//콘솔찍어봄!(삭제예정)
+const reviewsWithMine =
+reviews.map((review) => {
+
+  console.log(
+    "review.userId =",
+    review.userId
+  );
+
+  console.log(
+    "loginUserId =",
+    loginUserId
+  );
+
+  return {
+    ...review,
+    isMine:
+      review.userId === loginUserId,
+  };
+});
+ 
 
   return {
     clubId,
@@ -135,7 +164,7 @@ exports.getClubReviews = async (clubId) => {
       Number(stats.averageRating || 0),
     reviewCount:
       Number(stats.reviewCount || 0),
-    reviews
+    reviews: reviewsWithMine
   };
 };
 
