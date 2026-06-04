@@ -8,9 +8,9 @@ const reviewController = require('../controllers/reviewController');
 
 // authMiddleware 구현 후 활성화 예정 
 
-// const verifyToken = 
+const verifyToken = 
 
-    // require('../middlewares/authMiddleware');
+    require('../middlewares/authMiddleware');
 
 //리뷰 등록
 
@@ -18,7 +18,7 @@ router.post(
 
   '/api/clubs/:clubId/reviews',
 
-  //verifyToken,
+  verifyToken,
 
   reviewController.createReview
 
@@ -32,16 +32,18 @@ router.get(
 
     '/api/clubs/:clubId/reviews',
 
+    verifyToken,
+
     reviewController.getClubReviews,
 
-    //verifyToken
+    
 
 );
 
 //리뷰 삭제
 router.delete(
     '/api/reviews/:reviewId',
-    //verifyToken,
+    verifyToken,
     reviewController.deleteReview
 );
 

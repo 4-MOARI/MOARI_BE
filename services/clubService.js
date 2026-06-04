@@ -1,6 +1,6 @@
 const clubModel = require('../models/clubModel');
 
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort }) => {
+exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize }) => {
   // sort 유효성 검사
   const validSorts = ['favoriteCount', 'rating', 'name'];
   if (sort && !validSorts.includes(sort)) {
@@ -10,22 +10,32 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort 
     throw error;
   }
 
-  const clubs = await clubModel.getClubs({
+  // ✅ 페이지네이션 값 정규화 (기본값: page=1, pageSize=10)
+  const parsedPage = Math.max(1, parseInt(page) || 1);
+  const parsedPageSize = Math.min(50, Math.max(1, parseInt(pageSize) || 10)); //최대50개제한
+
+  const { clubs, totalCount } = await clubModel.getClubs({
     keyword,
     categoryId,
     isRecruiting,
     schoolType,
-    sort
+    sort,
+    page: parsedPage,
+    pageSize: parsedPageSize
   });
 
+  // ✅ 페이지네이션 메타 계산
+  const totalPages = Math.ceil(totalCount / parsedPageSize);
+
   return {
-    totalCount: clubs.length,
+    totalCount,
+    totalPages,
+    currentPage: parsedPage,
     clubs
   };
 };
 
-exports.getClubHistory = async (clubId) => {
-  // clubId 유효성 검사
+exports.getClubHistory = async (clubId, { page, pageSize } = {}) => {
   if (!clubId || isNaN(clubId)) {
     const error = new Error('올바르지 않은 동아리 ID입니다.');
     error.status = 400;
@@ -33,20 +43,31 @@ exports.getClubHistory = async (clubId) => {
     throw error;
   }
 
-  // 동아리 존재 여부 확인
   const club = await clubModel.findClubById(clubId);
   if (!club) {
     const error = new Error('해당 동아리를 찾을 수 없습니다.');
-    error.status = 400;
+    error.status = 404;
     error.code = 'CLUB_404';
     throw error;
   }
 
-  // 수정 로그 조회
-  const history = await clubModel.getClubHistory(clubId);
+  const parsedPage = Math.max(1, parseInt(page) || 1);
+  const parsedPageSize = Math.min(50, Math.max(1, parseInt(pageSize) || 10));
+
+  const { history, totalCount } = await clubModel.getClubHistory(clubId, {
+    page: parsedPage,
+    pageSize: parsedPageSize
+  });
+
+  const totalPages = Math.ceil(totalCount / parsedPageSize);
 
   return {
     clubId: Number(clubId),
+    clubName: club.clubName,
+    profileImageUrl: club.profileImageUrl || null,
+    totalCount,
+    totalPages,
+    currentPage: parsedPage,
     history
   };
 };

@@ -7,9 +7,9 @@ exports.createReview = async (req, res, next) => {
     const { rating, content } = req.body;
 
     // 로그인 유저라고 가정
-    // const userId = req.user.userId;
+    const userId = req.user.userId;
     //JWT 구현 전 임시 userId
-    const userId = 1;
+    //const userId = 1;
 
     const review =
       await reviewService.createReview({
@@ -35,8 +35,10 @@ exports.getClubReviews = async (req, res, next ) => {
     try {
         const clubId = Number(req.params.clubId);
 
+        const userId = req.user.userId;
+
         const result = 
-            await reviewService.getClubReviews( clubId );
+            await reviewService.getClubReviews( clubId, userId );
 
         return res.status(200).json({
             success: true,
@@ -59,10 +61,10 @@ exports.deleteReview = async (
             Number(req.params.reviewId);
 
         //JWT 구현 전 임시 userId
-        const userId = 1;
+        //const userId = 1;
 
-        //const userId =
-        //  req.user.userId;
+        const userId =
+         req.user.userId;
 
         await reviewService.deleteReview({
             reviewId,

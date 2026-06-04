@@ -3,14 +3,16 @@ const clubService = require('../services/clubService');
 // 동아리 목록 조회 (검색/필터/정렬)
 exports.getClubs = async (req, res, next) => {
   try {
-    const { keyword, categoryId, isRecruiting, schoolType, sort } = req.query;
+    const { keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize } = req.query;
 
     const result = await clubService.getClubs({
       keyword,
       categoryId,
       isRecruiting,
       schoolType,
-      sort
+      sort,
+      page,
+      pageSize
     });
 
     return res.status(200).json({
@@ -27,8 +29,9 @@ exports.getClubs = async (req, res, next) => {
 exports.getClubHistory = async (req, res, next) => {
   try {
     const clubId = Number(req.params.clubId);
+    const { page, pageSize } = req.query;
 
-    const result = await clubService.getClubHistory(clubId);
+    const result = await clubService.getClubHistory(clubId, { page, pageSize });
 
     return res.status(200).json({
       success: true,
