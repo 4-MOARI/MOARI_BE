@@ -105,7 +105,7 @@ exports.crawlClubs = async (clubDataList) => {
           ? null
           : Number(clubData.schoolId),
       categoryId: Number(clubData.categoryId),
-      lastModifiedBy: clubData.lastModifiedBy || 'test_user_1'
+      lastModifiedBy: clubData.lastModifiedBy || 'test01'
     };
     const existingClub = await clubModel.findClubByNameAndSchool(
       safeClubData.clubName,
@@ -135,7 +135,6 @@ exports.crawlClubs = async (clubDataList) => {
       const formattedLinks = clubData.links
         .map(link => ({
           linkType: link.linkType,
-          linkTitle: link.linkTitle || link.linkType,
           linkUrl: link.linkUrl
         }))
         .filter(link => link.linkType && link.linkUrl && link.linkUrl.trim() !== '');
@@ -182,7 +181,6 @@ exports.saveClubLinks = async (clubId, linkData) => {
 
   const validLinks = linkData.links.map(link => ({
     linkType: link.linkType,
-    linkTitle: link.linkTitle || link.linkType,
     linkUrl: link.linkUrl
   })).filter(link => link.linkType && link.linkUrl && link.linkUrl.trim() !== '');
 
@@ -283,15 +281,14 @@ exports.registerClub = async (clubData) => {
     coverImageUrl: clubData.coverImageUrl || null,
     schoolId: assignedSchoolId,
     categoryId: Number(clubData.categoryId),
-    lastModifiedBy: clubData.lastModifiedBy || 'test_user_1'
+    lastModifiedBy: clubData.lastModifiedBy || 'test01'
   };
 
   const newClubId = await clubModel.createNewClub(safeClubData);
 
   if (clubData.links && Array.isArray(clubData.links) && clubData.links.length > 0) {
     const formattedLinks = clubData.links.map(link => ({
-      linkType: link.linkType, 
-      linkTitle: link.linkType === '직접입력' ? link.linkTitle : link.linkType, 
+      linkType: link.linkType,
       linkUrl: link.linkUrl
     })).filter(link => link.linkUrl && link.linkUrl.trim() !== '');
 
@@ -339,7 +336,7 @@ exports.updateClub = async (clubId, updateData) => {
     profileImageUrl: updateData.profileImageUrl || null,
     coverImageUrl: updateData.coverImageUrl || null,
     categoryId: updateData.categoryId ? Number(updateData.categoryId) : club.categoryId, 
-    lastModifiedBy: updateData.lastModifiedBy || 'test_user_1'
+    lastModifiedBy: updateData.lastModifiedBy || 'test01'
   };
 
   await clubModel.updateClubInfo(clubId, safeUpdateData);
@@ -348,7 +345,6 @@ exports.updateClub = async (clubId, updateData) => {
   if (updateData.links && Array.isArray(updateData.links) && updateData.links.length > 0) {
     const formattedLinks = updateData.links.map(link => ({
       linkType: link.linkType,
-      linkTitle: link.linkType === '직접입력' ? link.linkTitle : link.linkType,
       linkUrl: link.linkUrl
     })).filter(link => link.linkUrl && link.linkUrl.trim() !== '');
 
