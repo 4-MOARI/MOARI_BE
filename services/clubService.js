@@ -339,6 +339,33 @@ exports.updateClub = async (clubId, updateData) => {
     lastModifiedBy: updateData.lastModifiedBy || 'test01'
   };
 
+
+  const historyTargets = [
+    'briefDescription',
+    'description',
+    'activity',
+    'recruitStartAt',
+    'recruitEndAt',
+    'profileImageUrl',
+    'coverImageUrl',
+    'categoryId',
+  ];
+
+  for (const field of historyTargets) {
+    const oldValue = club[field] ?? null;
+    const newValue = safeUpdateData[field] ?? null;
+
+    if (String(oldValue ?? '') !== String(newValue ?? '')) {
+      await clubModel.insertClubHistory({
+        clubId,
+        userId: 1,
+        modifiedField: field,
+        oldValue: oldValue === null ? '' : String(oldValue),
+        newValue: newValue === null ? '' : String(newValue),
+      });
+    }
+  }
+
   await clubModel.updateClubInfo(clubId, safeUpdateData);
   await clubModel.deleteClubLinksByClubId(clubId); 
 

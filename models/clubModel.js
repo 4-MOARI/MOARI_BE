@@ -328,3 +328,28 @@ exports.createNewClub = async (clubData) => {
   );
   return result.insertId;
 };
+
+exports.insertClubHistory = async ({
+  clubId,
+  userId,
+  modifiedField,
+  oldValue,
+  newValue,
+}) => {
+  const [result] = await db.query(
+    `
+    INSERT INTO histories (
+      clubId, userId, modifiedField, oldValue, newValue
+    ) VALUES (?, ?, ?, ?, ?)
+    `,
+    [
+      clubId,
+      userId,
+      modifiedField,
+      oldValue,
+      newValue,
+    ]
+  );
+
+  return result.insertId;
+};
