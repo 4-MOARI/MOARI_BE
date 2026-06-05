@@ -12,7 +12,8 @@ exports.getClubs = async (req, res, next) => {
       schoolType,
       sort,
       page,
-      pageSize
+      pageSize,
+      userId: req.user?.userId
     });
 
     return res.status(200).json({
@@ -78,7 +79,9 @@ exports.saveClubLinks = async (req, res, next) => {
 exports.getClubDetail = async (req, res, next) => {
   try {
     const clubId = Number(req.params.clubId);
-    const result = await clubService.getClubDetail(clubId);
+    const result = await clubService.getClubDetail(clubId, {
+      userId: req.user?.userId
+    });
     return res.status(200).json({
       success: true,
       data: result,
