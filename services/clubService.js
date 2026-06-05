@@ -1,6 +1,6 @@
 const clubModel = require('../models/clubModel');
 
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize }) => {
+exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId }) => {
   // sort 유효성 검사
   const validSorts = ['favoriteCount', 'rating', 'name'];
   if (sort && !validSorts.includes(sort)) {
@@ -21,7 +21,8 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
     schoolType,
     sort,
     page: parsedPage,
-    pageSize: parsedPageSize
+    pageSize: parsedPageSize,
+    userId
   });
 
   // ✅ 페이지네이션 메타 계산
@@ -189,14 +190,16 @@ exports.saveClubLinks = async (clubId, linkData) => {
 };
 
 // 동아리 상세페이지 UI 데이터 조회 API 서비스
-exports.getClubDetail = async (clubId) => {
+exports.getClubDetail = async (clubId, { userId } = {}) => {
   if (!clubId || isNaN(clubId)) {
     const error = new Error('올바르지 않은 동아리 ID입니다.');
     error.status = 400;
     throw error;
   }
 
-  const clubDetail = await clubModel.getClubDetailById(clubId);
+  const clubDetail = await clubModel.getClubDetailById(clubId, {
+    userId
+  });
   if (!clubDetail) {
     const error = new Error('해당 동아리의 상세 페이지 정보를 찾을 수 없습니다.');
     error.status = 404;
@@ -226,6 +229,8 @@ exports.getClubDetail = async (clubId) => {
     categoryName: clubDetail.categoryName || '미지정',
     schoolType: clubDetail.schoolId ? '본인학교' : '외부',
     isRecruiting: recruitingStatus,
+    favoriteCount: Number(clubDetail.favoriteCount || 0),
+    isFavorite: Boolean(clubDetail.isFavorite),
     recruitPeriod: {
       start: clubDetail.recruitStartAt || null,
       end: clubDetail.recruitEndAt || null

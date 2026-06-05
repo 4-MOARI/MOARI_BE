@@ -30,7 +30,7 @@ exports.findClubByNameAndSchool = async (clubName, schoolId) => {
 
 // 동아리 목록 조회 (검색/필터/정렬)
 // ✅ 이렇게 수정
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize }) => {
+exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId }) => {
   // ✅ WHERE 조건과 파라미터는 COUNT/목록 쿼리가 공유
   let whereClause = ` WHERE 1=1`;
   const params = [];
@@ -82,10 +82,20 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
         ELSE 'internal'
       END AS schoolType,
       COUNT(DISTINCT f.userId) AS favoriteCount,
+      ${
+        userId
+          ? `MAX(CASE WHEN uf.userId IS NULL THEN 0 ELSE 1 END)`
+          : `0`
+      } AS isFavorite,
       ROUND(AVG(r.rating), 1) AS avgRating
     FROM clubs c
     LEFT JOIN categories cat ON c.categoryId = cat.categoryId
     LEFT JOIN favorites f ON c.clubId = f.clubId
+    ${
+      userId
+        ? `LEFT JOIN favorites uf ON c.clubId = uf.clubId AND uf.userId = ?`
+        : ``
+    }
     LEFT JOIN reviews r ON c.clubId = r.clubId
     ${whereClause}
     GROUP BY c.clubId, c.clubName, c.briefDescription, c.categoryId, cat.categoryName,
@@ -106,9 +116,11 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
   // ✅ LIMIT / OFFSET 추가
   const offset = (page - 1) * pageSize;
   listQuery += ` LIMIT ? OFFSET ?`;
-  params.push(pageSize, offset);
+  const listParams = userId
+    ? [userId, ...params, pageSize, offset]
+    : [...params, pageSize, offset];
 
-  const [rows] = await db.query(listQuery, params);
+  const [rows] = await db.query(listQuery, listParams);
 
   // ✅ totalCount와 clubs를 함께 반환 (서비스에서 totalPages 계산에 사용)
   return { clubs: rows, totalCount };
@@ -213,7 +225,7 @@ exports.deleteClubLinksByClubId = async (clubId) => {
 };
 
 // 동아리 상세페이지 UI 데이터 조회
-exports.getClubDetailById = async (clubId) => {
+exports.getClubDetailById = async (clubId, { userId } = {}) => {
   const [rows] = await db.query(
     `
     SELECT 
@@ -227,12 +239,27 @@ exports.getClubDetailById = async (clubId) => {
       c.schoolId,
       cat.categoryName,
       c.recruitStartAt,
-      c.recruitEndAt
+      c.recruitEndAt,
+      COUNT(DISTINCT f.userId) AS favoriteCount,
+      ${
+        userId
+          ? `MAX(CASE WHEN uf.userId IS NULL THEN 0 ELSE 1 END)`
+          : `0`
+      } AS isFavorite
     FROM clubs c
     LEFT JOIN categories cat ON c.categoryId = cat.categoryId
+    LEFT JOIN favorites f ON c.clubId = f.clubId
+    ${
+      userId
+        ? `LEFT JOIN favorites uf ON c.clubId = uf.clubId AND uf.userId = ?`
+        : ``
+    }
     WHERE c.clubId = ?
+    GROUP BY c.clubId, c.clubName, c.briefDescription, c.description, c.activity,
+             c.profileImageUrl, c.coverImageUrl, c.schoolId, cat.categoryName,
+             c.recruitStartAt, c.recruitEndAt
     `,
-    [clubId]
+    userId ? [userId, clubId] : [clubId]
   );
   return rows[0];
 };
