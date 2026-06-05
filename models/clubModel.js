@@ -184,13 +184,12 @@ exports.insertClubLinks = async (clubId, links) => {
   for (const link of links) {
     await db.query(
       `
-      INSERT INTO clubLinks (clubId, linkType, linkTitle, linkUrl)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO clubLinks (clubId, linkType, linkUrl)
+      VALUES (?, ?, ?)
       `,
       [
         clubId,
         link.linkType,
-        link.linkTitle || link.linkType,
         link.linkUrl
       ]
     );
