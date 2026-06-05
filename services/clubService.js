@@ -252,6 +252,13 @@ exports.getCategories = async () => {
 
 // 동아리 등록 API 서비스
 exports.registerClub = async (clubData) => {
+  if (!clubData.lastModifiedBy) {
+    const error = new Error('로그인이 필요한 서비스입니다.');
+    error.status = 401;
+    error.code = 'AUTH_401';
+    throw error;
+  }
+
   if (!clubData.clubName || clubData.clubName.trim() === '') {
     const error = new Error('동아리 이름은 필수 입력 항목입니다.');
     error.status = 400;
@@ -286,7 +293,7 @@ exports.registerClub = async (clubData) => {
     coverImageUrl: clubData.coverImageUrl || null,
     schoolId: assignedSchoolId,
     categoryId: Number(clubData.categoryId),
-    lastModifiedBy: clubData.lastModifiedBy || 'test01'
+    lastModifiedBy: clubData.lastModifiedBy
   };
 
   const newClubId = await clubModel.createNewClub(safeClubData);
@@ -310,6 +317,13 @@ exports.registerClub = async (clubData) => {
 
 // 동아리 수정 API 서비스
 exports.updateClub = async (clubId, updateData) => {
+  if (!updateData.lastModifiedBy) {
+    const error = new Error('로그인이 필요한 서비스입니다.');
+    error.status = 401;
+    error.code = 'AUTH_401';
+    throw error;
+  }
+
   if (!clubId || isNaN(clubId)) {
     const error = new Error('올바르지 않은 동아리 ID입니다.');
     error.status = 400;
@@ -341,7 +355,7 @@ exports.updateClub = async (clubId, updateData) => {
     profileImageUrl: updateData.profileImageUrl || null,
     coverImageUrl: updateData.coverImageUrl || null,
     categoryId: updateData.categoryId ? Number(updateData.categoryId) : club.categoryId, 
-    lastModifiedBy: updateData.lastModifiedBy || 'test01'
+    lastModifiedBy: updateData.lastModifiedBy
   };
 
   await clubModel.updateClubInfo(clubId, safeUpdateData);
