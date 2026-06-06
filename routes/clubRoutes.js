@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const clubController = require('../controllers/clubController');
+const optionalAuthMiddleware = require('../middlewares/optionalAuthMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 
 // 동아리 목록 조회 (검색/필터/정렬)
-router.get('/clubs', clubController.getClubs);
+router.get('/clubs', optionalAuthMiddleware, clubController.getClubs);
 // 동아리 수정 로그 조회
 router.get('/clubs/:clubId/history', clubController.getClubHistory);
 
@@ -18,15 +20,15 @@ router.post('/crawl/:clubId/links', clubController.saveClubLinks);
 router.get('/categories', clubController.getCategories);
 
 // 동아리 상세페이지 UI 데이터 조회 API
-router.get('/:clubId', clubController.getClubDetail);
+router.get('/:clubId', optionalAuthMiddleware, clubController.getClubDetail);
 
 
 // 동아리 수정 API
-router.patch('/clubs/:clubId/update', clubController.updateClub);
-router.patch('/:clubId/update', clubController.updateClub);
+router.patch('/clubs/:clubId/update', authMiddleware, clubController.updateClub);
+router.patch('/:clubId/update', authMiddleware, clubController.updateClub);
 
 // 동아리 등록 API
-router.get('/clubs/:clubId', clubController.getClubDetail);
-router.post('/register', clubController.registerClub);
+router.get('/clubs/:clubId', optionalAuthMiddleware, clubController.getClubDetail);
+router.post('/register', authMiddleware, clubController.registerClub);
 
 module.exports = router;

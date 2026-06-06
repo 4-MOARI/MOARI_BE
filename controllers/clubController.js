@@ -12,7 +12,8 @@ exports.getClubs = async (req, res, next) => {
       schoolType,
       sort,
       page,
-      pageSize
+      pageSize,
+      userId: req.user?.userId
     });
 
     return res.status(200).json({
@@ -78,7 +79,9 @@ exports.saveClubLinks = async (req, res, next) => {
 exports.getClubDetail = async (req, res, next) => {
   try {
     const clubId = Number(req.params.clubId);
-    const result = await clubService.getClubDetail(clubId);
+    const result = await clubService.getClubDetail(clubId, {
+      userId: req.user?.userId
+    });
     return res.status(200).json({
       success: true,
       data: result,
@@ -107,7 +110,10 @@ exports.getCategories = async (req, res, next) => {
 exports.updateClub = async (req, res, next) => {
   try {
     const clubId = Number(req.params.clubId);
-    const result = await clubService.updateClub(clubId, req.body);
+    const result = await clubService.updateClub(clubId, {
+      ...req.body,
+      lastModifiedBy: req.user.userId
+    });
     return res.status(200).json({
       success: true,
       data: result,
@@ -121,7 +127,11 @@ exports.updateClub = async (req, res, next) => {
 // 동아리 등록 API
 exports.registerClub = async (req, res, next) => {
   try {
-    const result = await clubService.registerClub(req.body);
+    const result = await clubService.registerClub({
+      ...req.body,
+      lastModifiedBy: req.user.userId,
+      schoolId: req.body.schoolId === undefined ? req.user.schoolId : req.body.schoolId
+    });
     return res.status(201).json({
       success: true,
       data: result,
