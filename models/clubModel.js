@@ -5,7 +5,19 @@ const db = require('../database/db');
 exports.findClubById = async (clubId) => {
   const [rows] = await db.query(
     `
-    SELECT clubId, clubName, schoolId, categoryId, briefDescription, description, activity, profileImageUrl
+    SELECT 
+      clubId,
+      clubName,
+      schoolId,
+      categoryId,
+      briefDescription,
+      description,
+      activity,
+      recruitStartAt,
+      recruitEndAt,
+      profileImageUrl,
+      coverImageUrl,
+      lastModifiedBy
     FROM clubs
     WHERE clubId = ?
     `,
@@ -354,5 +366,30 @@ exports.createNewClub = async (clubData) => {
       clubData.lastModifiedBy
     ]
   );
+  return result.insertId;
+};
+
+exports.insertClubHistory = async ({
+  clubId,
+  userId,
+  modifiedField,
+  oldValue,
+  newValue,
+}) => {
+  const [result] = await db.query(
+    `
+    INSERT INTO histories (
+      clubId, userId, modifiedField, oldValue, newValue
+    ) VALUES (?, ?, ?, ?, ?)
+    `,
+    [
+      clubId,
+      userId,
+      modifiedField,
+      oldValue,
+      newValue,
+    ]
+  );
+
   return result.insertId;
 };
