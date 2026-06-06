@@ -5,7 +5,19 @@ const db = require('../database/db');
 exports.findClubById = async (clubId) => {
   const [rows] = await db.query(
     `
-    SELECT clubId, clubName, schoolId, categoryId, briefDescription, description, activity, profileImageUrl
+    SELECT 
+      clubId,
+      clubName,
+      schoolId,
+      categoryId,
+      briefDescription,
+      description,
+      activity,
+      recruitStartAt,
+      recruitEndAt,
+      profileImageUrl,
+      coverImageUrl,
+      lastModifiedBy
     FROM clubs
     WHERE clubId = ?
     `,
@@ -75,6 +87,7 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
       cat.categoryName,
       c.recruitStartAt,
       c.recruitEndAt,
+      c.profileImageUrl,
       c.coverImageUrl,
       c.updatedAt,
       CASE 
@@ -99,7 +112,7 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
     LEFT JOIN reviews r ON c.clubId = r.clubId
     ${whereClause}
     GROUP BY c.clubId, c.clubName, c.briefDescription, c.categoryId, cat.categoryName,
-             c.recruitStartAt, c.recruitEndAt, c.coverImageUrl, c.updatedAt, c.schoolId
+             c.recruitStartAt, c.recruitEndAt, c.profileImageUrl, c.coverImageUrl, c.updatedAt, c.schoolId
   `;
 
   const staleDateThreshold = `DATE_SUB(NOW(), INTERVAL 6 MONTH)`;
@@ -353,5 +366,30 @@ exports.createNewClub = async (clubData) => {
       clubData.lastModifiedBy
     ]
   );
+  return result.insertId;
+};
+
+exports.insertClubHistory = async ({
+  clubId,
+  userId,
+  modifiedField,
+  oldValue,
+  newValue,
+}) => {
+  const [result] = await db.query(
+    `
+    INSERT INTO histories (
+      clubId, userId, modifiedField, oldValue, newValue
+    ) VALUES (?, ?, ?, ?, ?)
+    `,
+    [
+      clubId,
+      userId,
+      modifiedField,
+      oldValue,
+      newValue,
+    ]
+  );
+
   return result.insertId;
 };
