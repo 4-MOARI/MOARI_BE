@@ -5,7 +5,19 @@ const db = require('../database/db');
 exports.findClubById = async (clubId) => {
   const [rows] = await db.query(
     `
-    SELECT clubId, clubName, schoolId, categoryId, briefDescription, description, activity, profileImageUrl
+    SELECT 
+      clubId,
+      clubName,
+      schoolId,
+      categoryId,
+      briefDescription,
+      description,
+      activity,
+      recruitStartAt,
+      recruitEndAt,
+      profileImageUrl,
+      coverImageUrl,
+      lastModifiedBy
     FROM clubs
     WHERE clubId = ?
     `,

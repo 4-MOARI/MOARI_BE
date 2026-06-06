@@ -370,14 +370,16 @@ exports.updateClub = async (clubId, updateData) => {
     'categoryId',
   ];
 
+  const changedHistories = [];
+
   for (const field of historyTargets) {
     const oldValue = club[field] ?? null;
     const newValue = safeUpdateData[field] ?? null;
 
     if (String(oldValue ?? '') !== String(newValue ?? '')) {
-      await clubModel.insertClubHistory({
+      changedHistories.push({
         clubId,
-        userId: 1,
+        userId: updateData.lastModifiedBy,
         modifiedField: field,
         oldValue: oldValue === null ? '' : String(oldValue),
         newValue: newValue === null ? '' : String(newValue),
@@ -385,7 +387,20 @@ exports.updateClub = async (clubId, updateData) => {
     }
   }
 
+
+  if (changedHistories.length === 0) {
+    const error = new Error('수정사항이 없습니다.');
+    error.status = 400;
+    error.code = 'CLUB_400_NO_CHANGES';
+    throw error;
+  }
+
   await clubModel.updateClubInfo(clubId, safeUpdateData);
+
+  for (const history of changedHistories) {
+    await clubModel.insertClubHistory(history);
+  }
+
   await clubModel.deleteClubLinksByClubId(clubId); 
 
   if (updateData.links && Array.isArray(updateData.links) && updateData.links.length > 0) {
