@@ -1,6 +1,6 @@
+const API_URL = 'http://34.50.19.72:3000/api/crawl';
 const axios = require('axios');
 const cheerio = require('cheerio');
-const clubService = require('../services/clubService');
 
 const SCHOOL_ID = 12;
 const LAST_MODIFIED_BY = 'EWHA01';
@@ -158,7 +158,15 @@ async function crawlEwha() {
 
   console.log(`[이화여대 크롤링] 총 ${allClubs.length}개 저장 시도`);
 
-  const result = await clubService.crawlClubs(allClubs);
+  const saveResponse = await axios.post(API_URL, allClubs, {
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    });
+
+    console.log('DB 저장 결과:');
+    console.log(JSON.stringify(saveResponse.data, null, 2));
+    process.exit(0);
 
   console.log(result);
   process.exit(0);
