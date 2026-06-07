@@ -235,16 +235,8 @@ exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
     profileImageUrl: clubDetail.profileImageUrl || null,
     coverImageUrl: clubDetail.coverImageUrl || null,
     categoryName: clubDetail.categoryName || '미지정',
+    schoolName: clubDetail.schoolId ? clubDetail.schoolName : '외부',
     schoolType: clubDetail.schoolId ? '본인학교' : '외부',
-    isRecruiting: recruitingStatus,
-    favoriteCount: Number(clubDetail.favoriteCount || 0),
-    isFavorite: Boolean(clubDetail.isFavorite),
-    recruitPeriod: {
-      start: clubDetail.recruitStartAt || null,
-      end: clubDetail.recruitEndAt || null
-    },
-    warningMessage: clubDetail.warningMessage || null,
-    links: links || []
   };
 };
 
@@ -280,8 +272,16 @@ exports.registerClub = async (clubData) => {
   }
 
   let assignedSchoolId = null;
-  if (clubData.schoolType === '본인학교') {
-    assignedSchoolId = clubData.schoolId ? Number(clubData.schoolId) : 1; 
+
+  if (clubData.schoolType === '본인학교' || clubData.schoolType === 'internal') {
+    if (!clubData.schoolId) {
+      const error = new Error('교내 동아리는 학교 정보가 필요합니다.');
+      error.status = 400;
+      error.code = 'CLUB_400_SCHOOL_REQUIRED';
+      throw error;
+    }
+
+    assignedSchoolId = Number(clubData.schoolId);
   }
 
   let recruitStartAt = null;
