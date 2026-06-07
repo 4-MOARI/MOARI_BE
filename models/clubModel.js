@@ -42,10 +42,28 @@ exports.findClubByNameAndSchool = async (clubName, schoolId) => {
 
 // 동아리 목록 조회 (검색/필터/정렬)
 // ✅ 이렇게 수정
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId }) => {
+exports.getClubs = async ({
+  keyword,
+  categoryId,
+  isRecruiting,
+  schoolType,
+  sort,
+  page,
+  pageSize,
+  userId,
+  userSchoolId
+}) => {
   // ✅ WHERE 조건과 파라미터는 COUNT/목록 쿼리가 공유
   let whereClause = ` WHERE 1=1`;
   const params = [];
+
+  // 학교 접근 제한
+  if (userSchoolId) {
+    whereClause += ` AND (c.schoolId IS NULL OR c.schoolId = ?)`;
+    params.push(userSchoolId);
+  } else {
+    whereClause += ` AND 1=0`;
+  }
 
   if (keyword) {
     whereClause += ` AND (c.clubName LIKE ? OR c.description LIKE ? OR c.activity LIKE ?)`;
