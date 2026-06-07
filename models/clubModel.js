@@ -278,6 +278,7 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
       c.profileImageUrl,
       c.coverImageUrl,
       c.schoolId,
+      s.schoolName,
       cat.categoryName,
       c.recruitStartAt,
       c.recruitEndAt,
@@ -289,6 +290,7 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
       } AS isFavorite
     FROM clubs c
     LEFT JOIN categories cat ON c.categoryId = cat.categoryId
+    LEFT JOIN schools s ON c.schoolId = s.schoolId
     LEFT JOIN favorites f ON c.clubId = f.clubId
     ${
       userId
@@ -297,7 +299,7 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
     }
     WHERE c.clubId = ?
     GROUP BY c.clubId, c.clubName, c.briefDescription, c.description, c.activity,
-             c.profileImageUrl, c.coverImageUrl, c.schoolId, cat.categoryName,
+             c.profileImageUrl, c.coverImageUrl, c.schoolId, s.schoolName, cat.categoryName,
              c.recruitStartAt, c.recruitEndAt
     `,
     userId ? [userId, clubId] : [clubId]
