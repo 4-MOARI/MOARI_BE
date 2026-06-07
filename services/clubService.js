@@ -1,6 +1,6 @@
 const clubModel = require('../models/clubModel');
 
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId }) => {
+exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId, userSchoolId }) => {
   // sort 유효성 검사
   const validSorts = ['favoriteCount', 'rating', 'name'];
   if (sort && !validSorts.includes(sort)) {
@@ -22,7 +22,8 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
     sort,
     page: parsedPage,
     pageSize: parsedPageSize,
-    userId
+    userId,
+    userSchoolId
   });
 
   // ✅ 페이지네이션 메타 계산
@@ -190,7 +191,7 @@ exports.saveClubLinks = async (clubId, linkData) => {
 };
 
 // 동아리 상세페이지 UI 데이터 조회 API 서비스
-exports.getClubDetail = async (clubId, { userId } = {}) => {
+exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
   if (!clubId || isNaN(clubId)) {
     const error = new Error('올바르지 않은 동아리 ID입니다.');
     error.status = 400;
@@ -203,6 +204,13 @@ exports.getClubDetail = async (clubId, { userId } = {}) => {
   if (!clubDetail) {
     const error = new Error('해당 동아리의 상세 페이지 정보를 찾을 수 없습니다.');
     error.status = 404;
+    throw error;
+  }
+
+  if (clubDetail.schoolId !== null && clubDetail.schoolId !== userSchoolId) {
+    const error = new Error('해당 동아리에 접근할 수 없습니다.');
+    error.status = 403;
+    error.code = 'CLUB_403_FORBIDDEN_SCHOOL';
     throw error;
   }
 
@@ -239,6 +247,7 @@ exports.getClubDetail = async (clubId, { userId } = {}) => {
     links: links || []
   };
 };
+
 
 // 전체 카테고리 목록 조회 API 서비스
 exports.getCategories = async () => {
@@ -334,6 +343,13 @@ exports.updateClub = async (clubId, updateData) => {
   if (!club) {
     const error = new Error('수정하려는 동아리를 찾을 수 없습니다.');
     error.status = 404;
+    throw error;
+  }
+  
+  if (club.schoolId !== null && club.schoolId !== updateData.userSchoolId) {
+    const error = new Error('해당 동아리를 수정할 권한이 없습니다.');
+    error.status = 403;
+    error.code = 'CLUB_403_FORBIDDEN_SCHOOL';
     throw error;
   }
 

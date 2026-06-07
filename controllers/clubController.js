@@ -13,7 +13,8 @@ exports.getClubs = async (req, res, next) => {
       sort,
       page,
       pageSize,
-      userId: req.user?.userId
+      userId: req.user?.userId,
+      userSchoolId: req.user?.schoolId
     });
 
     return res.status(200).json({
@@ -80,7 +81,8 @@ exports.getClubDetail = async (req, res, next) => {
   try {
     const clubId = Number(req.params.clubId);
     const result = await clubService.getClubDetail(clubId, {
-      userId: req.user?.userId
+      userId: req.user?.userId,
+      userSchoolId: req.user?.schoolId
     });
     return res.status(200).json({
       success: true,
@@ -112,7 +114,8 @@ exports.updateClub = async (req, res, next) => {
     const clubId = Number(req.params.clubId);
     const result = await clubService.updateClub(clubId, {
       ...req.body,
-      lastModifiedBy: req.user.userId
+      lastModifiedBy: req.user.userId,
+      userSchoolId: req.user.schoolId
     });
     return res.status(200).json({
       success: true,
