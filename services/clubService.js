@@ -238,6 +238,13 @@ exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
     schoolName: clubDetail.schoolId ? clubDetail.schoolName : '외부',
     schoolType: clubDetail.schoolId ? '본인학교' : '외부',
 
+    isRecruiting: recruitingStatus,
+
+    recruitPeriod: {
+      start: clubDetail.recruitStartAt,
+      end: clubDetail.recruitEndAt,
+    },
+
     links,
   };
 };
@@ -409,7 +416,7 @@ exports.updateClub = async (clubId, updateData) => {
   const normalizeLinksForHistory = (links = []) =>
     links
       .map((link) => ({
-        type: link.type || link.linkType || '',
+        type: link.type || link.linkType || link.title || link.linkTitle || '',
         url: link.url || link.linkUrl || '',
       }))
       .filter((link) => link.type && link.url)
