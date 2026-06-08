@@ -237,6 +237,8 @@ exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
     categoryName: clubDetail.categoryName || '미지정',
     schoolName: clubDetail.schoolId ? clubDetail.schoolName : '외부',
     schoolType: clubDetail.schoolId ? '본인학교' : '외부',
+
+    links,
   };
 };
 
@@ -439,10 +441,10 @@ exports.updateClub = async (clubId, updateData) => {
   if (updateData.links && Array.isArray(updateData.links) && updateData.links.length > 0) {
     const formattedLinks = updateData.links
       .map(link => ({
-        linkType: link.linkType,
-        linkUrl: link.linkUrl
+        linkType: link.linkType || link.type || link.title || link.linkTitle,
+        linkUrl: link.linkUrl || link.url
       }))
-      .filter(link => link.linkUrl && link.linkUrl.trim() !== '');
+      .filter(link => link.linkType && link.linkUrl && link.linkUrl.trim() !== '');
 
     if (formattedLinks.length > 0) {
       await clubModel.insertClubLinks(clubId, formattedLinks);
