@@ -238,6 +238,11 @@ exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
     schoolName: clubDetail.schoolId ? clubDetail.schoolName : '외부',
     schoolType: clubDetail.schoolId ? '본인학교' : '외부',
 
+    updatedAt: clubDetail.updatedAt,
+    yearsSinceUpdate: clubDetail.yearsSinceUpdate,
+    displayWarning: Boolean(clubDetail.displayWarning),
+    warningMessage: clubDetail.warningMessage,
+
     isRecruiting: recruitingStatus,
 
     recruitPeriod: {
