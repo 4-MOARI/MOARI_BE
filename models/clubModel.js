@@ -143,7 +143,7 @@ exports.getClubs = async ({
       c.schoolId
   `;
 
-  const staleDateThreshold = `DATE_SUB(NOW(), INTERVAL 6 MONTH)`;
+  const staleDateThreshold = `DATE_SUB(NOW(), INTERVAL 1 YEAR)`;
   if (sort === 'favoriteCount') {
     listQuery += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, favoriteCount DESC`;
   } else if (sort === 'rating') {
@@ -282,6 +282,20 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
       cat.categoryName,
       c.recruitStartAt,
       c.recruitEndAt,
+      c.updatedAt,
+      TIMESTAMPDIFF(YEAR, c.updatedAt, NOW()) AS yearsSinceUpdate,
+      CASE
+        WHEN c.updatedAt < DATE_SUB(NOW(), INTERVAL 1 YEAR) THEN 1
+        ELSE 0
+      END AS displayWarning,
+      CASE
+        WHEN c.updatedAt < DATE_SUB(NOW(), INTERVAL 1 YEAR)
+        THEN CONCAT(
+          TIMESTAMPDIFF(YEAR, c.updatedAt, NOW()),
+          '년 이상 업데이트가 이루어지지 않은 동아리입니다. 현재 실제 활동 여부나 정보가 다를 수 있으니 확인 후 이용해주세요.'
+        )
+        ELSE NULL
+      END AS warningMessage,
       COUNT(DISTINCT f.userId) AS favoriteCount,
       ${
         userId
@@ -299,9 +313,8 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
     }
     WHERE c.clubId = ?
     GROUP BY c.clubId, c.clubName, c.briefDescription, c.description, c.activity,
-             c.profileImageUrl, c.coverImageUrl, c.schoolId, s.schoolName, cat.categoryName,
-             c.recruitStartAt, c.recruitEndAt
-    `,
+         c.profileImageUrl, c.coverImageUrl, c.schoolId, s.schoolName, cat.categoryName,
+         c.recruitStartAt, c.recruitEndAt, c.updatedAt`,
     userId ? [userId, clubId] : [clubId]
   );
   return rows[0];
