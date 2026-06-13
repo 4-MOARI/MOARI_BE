@@ -93,6 +93,7 @@ exports.getClubs = async ({
       cat.categoryName,
       c.recruitStartAt,
       c.recruitEndAt,
+      c.profileImageUrl,
       c.coverImageUrl,
       c.updatedAt,
       CASE 
