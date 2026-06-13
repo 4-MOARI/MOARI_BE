@@ -116,10 +116,9 @@ exports.getClubs = async ({
     }
     LEFT JOIN reviews r ON c.clubId = r.clubId
     ${whereClause}
-<<<<<<< HEAD
-    GROUP BY c.clubId, c.clubName, c.briefDescription, c.categoryId, cat.categoryName,
-             c.recruitStartAt, c.recruitEndAt, c.coverImageUrl, c.updatedAt, c.schoolId
-=======
+
+    
+
     GROUP BY
       c.clubId,
       c.clubName,
@@ -132,7 +131,7 @@ exports.getClubs = async ({
       c.coverImageUrl,
       c.updatedAt,
       c.schoolId
->>>>>>> develop
+
   `;
 
   const staleDateThreshold = `DATE_SUB(NOW(), INTERVAL 1 YEAR)`;
