@@ -12,7 +12,7 @@ exports.findClubById = async (clubId) => {
     [clubId]
   );
   return rows[0];
-};
+}; 
 
 exports.findClubByNameAndSchool = async (clubName, schoolId) => {
   const [rows] = await db.query(
@@ -30,10 +30,28 @@ exports.findClubByNameAndSchool = async (clubName, schoolId) => {
 
 // 동아리 목록 조회 (검색/필터/정렬)
 // ✅ 이렇게 수정
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId }) => {
+exports.getClubs = async ({
+  keyword,
+  categoryId,
+  isRecruiting,
+  schoolType,
+  sort,
+  page,
+  pageSize,
+  userId,
+  userSchoolId
+}) => {
   // ✅ WHERE 조건과 파라미터는 COUNT/목록 쿼리가 공유
   let whereClause = ` WHERE 1=1`;
   const params = [];
+
+  // 학교 접근 제한
+  if (userSchoolId) {
+    whereClause += ` AND (c.schoolId IS NULL OR c.schoolId = ?)`;
+    params.push(userSchoolId);
+  } else {
+    whereClause += ` AND 1=0`;
+  }
 
   if (keyword) {
     whereClause += ` AND (c.clubName LIKE ? OR c.description LIKE ? OR c.activity LIKE ?)`;
@@ -98,11 +116,26 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
     }
     LEFT JOIN reviews r ON c.clubId = r.clubId
     ${whereClause}
+<<<<<<< HEAD
     GROUP BY c.clubId, c.clubName, c.briefDescription, c.categoryId, cat.categoryName,
              c.recruitStartAt, c.recruitEndAt, c.coverImageUrl, c.updatedAt, c.schoolId
+=======
+    GROUP BY
+      c.clubId,
+      c.clubName,
+      c.briefDescription,
+      c.categoryId,
+      cat.categoryName,
+      c.recruitStartAt,
+      c.recruitEndAt,
+      c.profileImageUrl,
+      c.coverImageUrl,
+      c.updatedAt,
+      c.schoolId
+>>>>>>> develop
   `;
 
-  const staleDateThreshold = `DATE_SUB(NOW(), INTERVAL 6 MONTH)`;
+  const staleDateThreshold = `DATE_SUB(NOW(), INTERVAL 1 YEAR)`;
   if (sort === 'favoriteCount') {
     listQuery += ` ORDER BY CASE WHEN c.updatedAt < ${staleDateThreshold} THEN 1 ELSE 0 END ASC, favoriteCount DESC`;
   } else if (sort === 'rating') {
@@ -237,9 +270,24 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
       c.profileImageUrl,
       c.coverImageUrl,
       c.schoolId,
+      s.schoolName,
       cat.categoryName,
       c.recruitStartAt,
       c.recruitEndAt,
+      c.updatedAt,
+      TIMESTAMPDIFF(YEAR, c.updatedAt, NOW()) AS yearsSinceUpdate,
+      CASE
+        WHEN c.updatedAt < DATE_SUB(NOW(), INTERVAL 1 YEAR) THEN 1
+        ELSE 0
+      END AS displayWarning,
+      CASE
+        WHEN c.updatedAt < DATE_SUB(NOW(), INTERVAL 1 YEAR)
+        THEN CONCAT(
+          TIMESTAMPDIFF(YEAR, c.updatedAt, NOW()),
+          '년 이상 업데이트가 이루어지지 않은 동아리입니다. 현재 실제 활동 여부나 정보가 다를 수 있으니 확인 후 이용해주세요.'
+        )
+        ELSE NULL
+      END AS warningMessage,
       COUNT(DISTINCT f.userId) AS favoriteCount,
       ${
         userId
@@ -248,6 +296,7 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
       } AS isFavorite
     FROM clubs c
     LEFT JOIN categories cat ON c.categoryId = cat.categoryId
+    LEFT JOIN schools s ON c.schoolId = s.schoolId
     LEFT JOIN favorites f ON c.clubId = f.clubId
     ${
       userId
@@ -256,9 +305,8 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
     }
     WHERE c.clubId = ?
     GROUP BY c.clubId, c.clubName, c.briefDescription, c.description, c.activity,
-             c.profileImageUrl, c.coverImageUrl, c.schoolId, cat.categoryName,
-             c.recruitStartAt, c.recruitEndAt
-    `,
+         c.profileImageUrl, c.coverImageUrl, c.schoolId, s.schoolName, cat.categoryName,
+         c.recruitStartAt, c.recruitEndAt, c.updatedAt`,
     userId ? [userId, clubId] : [clubId]
   );
   return rows[0];
@@ -355,3 +403,35 @@ exports.createNewClub = async (clubData) => {
   );
   return result.insertId;
 };
+
+
+exports.insertClubHistory = async ({
+  clubId,
+  userId,
+  modifiedField,
+  oldValue,
+  newValue,
+}) => {
+  const [result] = await db.query(
+    `
+    INSERT INTO histories (
+      clubId,
+      userId,
+      modifiedField,
+      oldValue,
+      newValue
+    )
+    VALUES (?, ?, ?, ?, ?)
+    `,
+    [
+      clubId,
+      userId,
+      modifiedField,
+      oldValue,
+      newValue,
+    ]
+  );
+
+  return result.insertId;
+};
+

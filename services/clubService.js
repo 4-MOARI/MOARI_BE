@@ -1,6 +1,6 @@
 const clubModel = require('../models/clubModel');
 
-exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId }) => {
+exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort, page, pageSize, userId, userSchoolId }) => {
   // sort 유효성 검사
   const validSorts = ['favoriteCount', 'rating', 'name'];
   if (sort && !validSorts.includes(sort)) {
@@ -22,7 +22,8 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
     sort,
     page: parsedPage,
     pageSize: parsedPageSize,
-    userId
+    userId,
+    userSchoolId
   });
 
   // ✅ 페이지네이션 메타 계산
@@ -190,7 +191,7 @@ exports.saveClubLinks = async (clubId, linkData) => {
 };
 
 // 동아리 상세페이지 UI 데이터 조회 API 서비스
-exports.getClubDetail = async (clubId, { userId } = {}) => {
+exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
   if (!clubId || isNaN(clubId)) {
     const error = new Error('올바르지 않은 동아리 ID입니다.');
     error.status = 400;
@@ -203,6 +204,13 @@ exports.getClubDetail = async (clubId, { userId } = {}) => {
   if (!clubDetail) {
     const error = new Error('해당 동아리의 상세 페이지 정보를 찾을 수 없습니다.');
     error.status = 404;
+    throw error;
+  }
+
+  if (clubDetail.schoolId !== null && clubDetail.schoolId !== userSchoolId) {
+    const error = new Error('해당 동아리에 접근할 수 없습니다.');
+    error.status = 403;
+    error.code = 'CLUB_403_FORBIDDEN_SCHOOL';
     throw error;
   }
 
@@ -227,18 +235,25 @@ exports.getClubDetail = async (clubId, { userId } = {}) => {
     profileImageUrl: clubDetail.profileImageUrl || null,
     coverImageUrl: clubDetail.coverImageUrl || null,
     categoryName: clubDetail.categoryName || '미지정',
+    schoolName: clubDetail.schoolId ? clubDetail.schoolName : '외부',
     schoolType: clubDetail.schoolId ? '본인학교' : '외부',
+
+    updatedAt: clubDetail.updatedAt,
+    yearsSinceUpdate: clubDetail.yearsSinceUpdate,
+    displayWarning: Boolean(clubDetail.displayWarning),
+    warningMessage: clubDetail.warningMessage,
+
     isRecruiting: recruitingStatus,
-    favoriteCount: Number(clubDetail.favoriteCount || 0),
-    isFavorite: Boolean(clubDetail.isFavorite),
+
     recruitPeriod: {
-      start: clubDetail.recruitStartAt || null,
-      end: clubDetail.recruitEndAt || null
+      start: clubDetail.recruitStartAt,
+      end: clubDetail.recruitEndAt,
     },
-    warningMessage: clubDetail.warningMessage || null,
-    links: links || []
+
+    links,
   };
 };
+
 
 // 전체 카테고리 목록 조회 API 서비스
 exports.getCategories = async () => {
@@ -271,8 +286,16 @@ exports.registerClub = async (clubData) => {
   }
 
   let assignedSchoolId = null;
-  if (clubData.schoolType === '본인학교') {
-    assignedSchoolId = clubData.schoolId ? Number(clubData.schoolId) : 1; 
+
+  if (clubData.schoolType === '본인학교' || clubData.schoolType === 'internal') {
+    if (!clubData.schoolId) {
+      const error = new Error('교내 동아리는 학교 정보가 필요합니다.');
+      error.status = 400;
+      error.code = 'CLUB_400_SCHOOL_REQUIRED';
+      throw error;
+    }
+
+    assignedSchoolId = Number(clubData.schoolId);
   }
 
   let recruitStartAt = null;
@@ -336,6 +359,15 @@ exports.updateClub = async (clubId, updateData) => {
     error.status = 404;
     throw error;
   }
+  
+  if (club.schoolId !== null && club.schoolId !== updateData.userSchoolId) {
+    const error = new Error('해당 동아리를 수정할 권한이 없습니다.');
+    error.status = 403;
+    error.code = 'CLUB_403_FORBIDDEN_SCHOOL';
+    throw error;
+  }
+
+  const beforeLinks = await clubModel.findClubLinksByClubId(clubId);
 
   let recruitStartAt = null;
   let recruitEndAt = null;
@@ -345,35 +377,103 @@ exports.updateClub = async (clubId, updateData) => {
   }
 
   const safeUpdateData = {
-    clubName: club.clubName, 
-    schoolId: club.schoolId, 
+    clubName: club.clubName,
+    schoolId: club.schoolId,
     briefDescription: updateData.briefDescription || null,
     description: updateData.description || null,
     activity: updateData.activity || null,
     recruitStartAt,
     recruitEndAt,
-    profileImageUrl: updateData.profileImageUrl || null,
-    coverImageUrl: updateData.coverImageUrl || null,
-    categoryId: updateData.categoryId ? Number(updateData.categoryId) : club.categoryId, 
+    profileImageUrl: updateData.profileImageUrl || club.profileImageUrl || null,
+    coverImageUrl: updateData.coverImageUrl || club.coverImageUrl || null,
+    categoryId: updateData.categoryId ? Number(updateData.categoryId) : club.categoryId,
     lastModifiedBy: updateData.lastModifiedBy
   };
+
 
   await clubModel.updateClubInfo(clubId, safeUpdateData);
   await clubModel.deleteClubLinksByClubId(clubId); 
 
+  const historyTargets = [
+    'briefDescription',
+    'description',
+    'activity',
+    'recruitStartAt',
+    'recruitEndAt',
+    'profileImageUrl',
+    'coverImageUrl',
+    'categoryId',
+  ];
+
+  const changedHistories = [];
+
+  for (const field of historyTargets) {
+    const oldValue = club[field] ?? null;
+    const newValue = safeUpdateData[field] ?? null;
+
+    if (String(oldValue ?? '') !== String(newValue ?? '')) {
+      changedHistories.push({
+        clubId,
+        userId: updateData.lastModifiedBy,
+        modifiedField: field,
+        oldValue: oldValue === null ? '' : String(oldValue),
+        newValue: newValue === null ? '' : String(newValue),
+      });
+    }
+  }
+
+  const normalizeLinksForHistory = (links = []) =>
+    links
+      .map((link) => ({
+        type: link.type || link.linkType || link.title || link.linkTitle || '',
+        url: link.url || link.linkUrl || '',
+      }))
+      .filter((link) => link.type && link.url)
+      .sort((a, b) => `${a.type}${a.url}`.localeCompare(`${b.type}${b.url}`));
+
+  const oldLinksValue = JSON.stringify(normalizeLinksForHistory(beforeLinks));
+  const newLinksValue = JSON.stringify(normalizeLinksForHistory(updateData.links || []));
+
+  if (oldLinksValue !== newLinksValue) {
+    changedHistories.push({
+      clubId,
+      userId: updateData.lastModifiedBy,
+      modifiedField: 'links',
+      oldValue: oldLinksValue,
+      newValue: newLinksValue,
+    });
+  }
+
+  if (changedHistories.length === 0) {
+    const error = new Error('수정사항이 없습니다.');
+    error.status = 400;
+    error.code = 'CLUB_400_NO_CHANGES';
+    throw error;
+  }
+
+  await clubModel.updateClubInfo(clubId, safeUpdateData);
+  await clubModel.deleteClubLinksByClubId(clubId);
+
+
   if (updateData.links && Array.isArray(updateData.links) && updateData.links.length > 0) {
-    const formattedLinks = updateData.links.map(link => ({
-      linkType: link.linkType,
-      linkUrl: link.linkUrl
-    })).filter(link => link.linkUrl && link.linkUrl.trim() !== '');
+    const formattedLinks = updateData.links
+      .map(link => ({
+        linkType: link.linkType || link.type || link.title || link.linkTitle,
+        linkUrl: link.linkUrl || link.url
+      }))
+      .filter(link => link.linkType && link.linkUrl && link.linkUrl.trim() !== '');
 
     if (formattedLinks.length > 0) {
       await clubModel.insertClubLinks(clubId, formattedLinks);
     }
   }
 
-  return { 
-    message: '동아리 정보가 성공적으로 수정되었습니다.', 
-    clubId: Number(clubId) 
+  for (const history of changedHistories) {
+    await clubModel.insertClubHistory(history);
+  }
+
+  return {
+    message: '동아리 정보가 성공적으로 수정되었습니다.',
+    clubId: Number(clubId)
   };
 };
