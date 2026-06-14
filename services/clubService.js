@@ -10,7 +10,7 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
     throw error;
   }
 
-  // ✅ 페이지네이션 값 정규화 (기본값: page=1, pageSize=10)
+  // 페이지네이션 값 정규화 (기본값: page=1, pageSize=10)
   const parsedPage = Math.max(1, parseInt(page) || 1);
   const parsedPageSize = Math.min(50, Math.max(1, parseInt(pageSize) || 10)); //최대50개제한
 
@@ -26,7 +26,7 @@ exports.getClubs = async ({ keyword, categoryId, isRecruiting, schoolType, sort,
     userSchoolId
   });
 
-  // ✅ 페이지네이션 메타 계산
+  // 페이지네이션 메타 계산
   const totalPages = Math.ceil(totalCount / parsedPageSize);
 
   return {
