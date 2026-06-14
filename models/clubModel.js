@@ -29,7 +29,6 @@ exports.findClubByNameAndSchool = async (clubName, schoolId) => {
 };
 
 // 동아리 목록 조회 (검색/필터/정렬)
-// ✅ 이렇게 수정
 exports.getClubs = async ({
   keyword,
   categoryId,
@@ -41,7 +40,7 @@ exports.getClubs = async ({
   userId,
   userSchoolId
 }) => {
-  // ✅ WHERE 조건과 파라미터는 COUNT/목록 쿼리가 공유
+  // WHERE 조건과 파라미터는 COUNT/목록 쿼리가 공유
   let whereClause = ` WHERE 1=1`;
   const params = [];
 
@@ -72,7 +71,7 @@ exports.getClubs = async ({
     whereClause += ` AND c.schoolId IS NULL`;
   }
 
-  // ✅ 전체 개수 조회 (페이지네이션과 무관하게 필터 조건만 적용)
+  // 전체 개수 조회 (페이지네이션과 무관하게 필터 조건만 적용)
   const countQuery = `
     SELECT COUNT(DISTINCT c.clubId) AS totalCount
     FROM clubs c
@@ -155,7 +154,7 @@ exports.getClubs = async ({
 
   const [rows] = await db.query(listQuery, listParams);
 
-  // ✅ totalCount와 clubs를 함께 반환 (서비스에서 totalPages 계산에 사용)
+  // totalCount와 clubs를 함께 반환 (서비스에서 totalPages 계산에 사용)
   return { clubs: rows, totalCount };
 };
 
