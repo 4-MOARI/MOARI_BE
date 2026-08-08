@@ -153,3 +153,39 @@ CREATE TABLE histories (
   FOREIGN KEY (userId)
   REFERENCES users(userId)
 );
+
+CREATE TABLE interview_reviews (
+    interviewReviewId BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    clubId BIGINT NOT NULL,
+    userId VARCHAR(50) NOT NULL,
+
+    hasInterview BOOLEAN NOT NULL,
+
+    interviewMethod VARCHAR(20),
+    interviewType VARCHAR(20),
+    atmosphere VARCHAR(20),
+    difficulty VARCHAR(20),
+    duration VARCHAR(20),
+
+    competencies JSON,
+    questions JSON,
+
+    tip TEXT,
+
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_interview_review_club
+        FOREIGN KEY (clubId)
+        REFERENCES clubs(clubId)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_interview_review_user
+        FOREIGN KEY (userId)
+        REFERENCES users(userId)
+        ON DELETE CASCADE
+
+    UNIQUE KEY unique_user_club_interview (userId, clubId)
+);

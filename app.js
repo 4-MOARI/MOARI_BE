@@ -1,6 +1,8 @@
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+
 
 const reviewRoutes = require('./routes/reviewRoutes');
 const reportRoutes = require('./routes/reportRoutes');
@@ -10,6 +12,7 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const interviewReviewRoutes = require('./routes/interviewReviewRoutes');
 
 const { errorHandler } = require('./middlewares/errorHandler');
 
@@ -18,6 +21,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/', interviewReviewRoutes);
 
 app.get('/', (req, res) => {
   res.send('서버 실행 중!');
