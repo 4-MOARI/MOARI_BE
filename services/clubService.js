@@ -216,6 +216,8 @@ exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
 
   const links = await clubModel.findClubLinksByClubId(clubId);
 
+  const schedules = await clubModel.findClubSchedulesByClubId(clubId);
+
   let recruitingStatus = '마감';
   const now = new Date();
   if (clubDetail.recruitStartAt && clubDetail.recruitEndAt) {
@@ -251,6 +253,7 @@ exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
     },
 
     links,
+    schedules,
   };
 };
 
@@ -300,9 +303,10 @@ exports.registerClub = async (clubData) => {
 
   let recruitStartAt = null;
   let recruitEndAt = null;
-  if (clubData.isRecruiting === '모집중' && clubData.recruitPeriod) {
-    recruitStartAt = clubData.recruitPeriod.start || null;
-    recruitEndAt = clubData.recruitPeriod.end || null;
+
+  if (updateData.recruitPeriod) {
+    recruitStartAt = updateData.recruitPeriod.start || null;
+    recruitEndAt = updateData.recruitPeriod.end || null;
   }
 
   const safeClubData = {
@@ -330,6 +334,10 @@ exports.registerClub = async (clubData) => {
     if (formattedLinks.length > 0) {
       await clubModel.insertClubLinks(newClubId, formattedLinks);
     }
+  }
+
+  if (clubData.schedules && Array.isArray(clubData.schedules) && clubData.schedules.length > 0) {
+    await clubModel.insertClubSchedules(newClubId, clubData.schedules);
   }
 
   return { 
@@ -368,6 +376,7 @@ exports.updateClub = async (clubId, updateData) => {
   }
 
   const beforeLinks = await clubModel.findClubLinksByClubId(clubId);
+  const beforeSchedules = await clubModel.findClubSchedulesByClubId(clubId);
 
   let recruitStartAt = null;
   let recruitEndAt = null;
@@ -427,6 +436,37 @@ exports.updateClub = async (clubId, updateData) => {
       .filter((link) => link.type && link.url)
       .sort((a, b) => `${a.type}${a.url}`.localeCompare(`${b.type}${b.url}`));
 
+  const normalizeSchedulesForHistory = (schedules = []) =>
+    schedules
+      .map((schedule) => ({
+        dayOfWeek: schedule.dayOfWeek || '',
+        startTime: schedule.startTime || '',
+        endTime: schedule.endTime || '',
+      }))
+      .sort((a, b) =>
+        `${a.dayOfWeek}${a.startTime}${a.endTime}`.localeCompare(
+          `${b.dayOfWeek}${b.startTime}${b.endTime}`
+        )
+      );
+
+  const oldSchedulesValue = JSON.stringify(
+    normalizeSchedulesForHistory(beforeSchedules)
+  );
+
+  const newSchedulesValue = JSON.stringify(
+    normalizeSchedulesForHistory(updateData.schedules || [])
+  );
+
+  if (oldSchedulesValue !== newSchedulesValue) {
+    changedHistories.push({
+      clubId,
+      userId: updateData.lastModifiedBy,
+      modifiedField: 'schedules',
+      oldValue: oldSchedulesValue,
+      newValue: newSchedulesValue,
+    });
+  }
+
   const oldLinksValue = JSON.stringify(normalizeLinksForHistory(beforeLinks));
   const newLinksValue = JSON.stringify(normalizeLinksForHistory(updateData.links || []));
 
@@ -440,6 +480,7 @@ exports.updateClub = async (clubId, updateData) => {
     });
   }
 
+  
   if (changedHistories.length === 0) {
     const error = new Error('수정사항이 없습니다.');
     error.status = 400;
@@ -460,6 +501,31 @@ exports.updateClub = async (clubId, updateData) => {
 
     if (formattedLinks.length > 0) {
       await clubModel.insertClubLinks(clubId, formattedLinks);
+    }
+  }
+
+  await clubModel.deleteClubSchedulesByClubId(clubId);
+
+  if (
+    updateData.schedules &&
+    Array.isArray(updateData.schedules) &&
+    updateData.schedules.length > 0
+  ) {
+    const validSchedules = updateData.schedules
+      .filter(
+        schedule =>
+          schedule.dayOfWeek &&
+          schedule.startTime &&
+          schedule.endTime
+      )
+      .map(schedule => ({
+        dayOfWeek: schedule.dayOfWeek,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+      }));
+
+    if (validSchedules.length > 0) {
+      await clubModel.insertClubSchedules(clubId, validSchedules);
     }
   }
 

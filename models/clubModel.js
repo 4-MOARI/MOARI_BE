@@ -253,6 +253,69 @@ exports.insertClubLinks = async (clubId, links) => {
   return savedLinks;
 };
 
+// 동아리 정기 활동 시간 저장
+exports.insertClubSchedules = async (clubId, schedules) => {
+  if (!schedules || schedules.length === 0) return [];
+
+  const savedSchedules = [];
+
+  for (const schedule of schedules) {
+    await db.query(
+      `
+      INSERT INTO clubSchedules (
+        clubId,
+        dayOfWeek,
+        startTime,
+        endTime
+      )
+      VALUES (?, ?, ?, ?)
+      `,
+      [
+        clubId,
+        schedule.dayOfWeek,
+        schedule.startTime,
+        schedule.endTime
+      ]
+    );
+
+    savedSchedules.push(schedule);
+  }
+
+  return savedSchedules;
+};
+
+// 동아리 정기 활동 시간 삭제
+exports.deleteClubSchedulesByClubId = async (clubId) => {
+  const [result] = await db.query(
+    `
+    DELETE FROM clubSchedules
+    WHERE clubId = ?
+    `,
+    [clubId]
+  );
+
+  return result.affectedRows;
+};
+
+// 동아리 정기 활동 시간 조회
+exports.findClubSchedulesByClubId = async (clubId) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+      scheduleId,
+      dayOfWeek,
+      startTime,
+      endTime
+    FROM clubSchedules
+    WHERE clubId = ?
+    ORDER BY scheduleId ASC
+    `,
+    [clubId]
+  );
+
+  return rows;
+};
+
 // [추가 스펙] 수정 시 기존 동적 URL을 깨끗하게 비워주기 위한 삭제 메서드
 exports.deleteClubLinksByClubId = async (clubId) => {
   const [result] = await db.query(
