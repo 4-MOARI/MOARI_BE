@@ -10,6 +10,7 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const aiInterviewRoutes = require('./routes/aiInterviewRoutes');
 
 const { errorHandler } = require('./middlewares/errorHandler');
 
@@ -32,6 +33,7 @@ app.use('/api', reportRoutes);
 app.use('/api', clubRoutes);
 app.use('/api', favoriteRoutes);
 app.use('/api', userRoutes);
+app.use('/api', aiInterviewRoutes);
 app.use('/api/uploads', uploadRoutes);
 
 app.use(errorHandler);
