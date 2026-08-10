@@ -153,3 +153,83 @@ CREATE TABLE histories (
   FOREIGN KEY (userId)
   REFERENCES users(userId)
 );
+
+CREATE TABLE aiInterviewSessions (
+  interviewId BIGINT PRIMARY KEY AUTO_INCREMENT,
+
+  userId VARCHAR(50) NOT NULL,
+  clubId BIGINT NOT NULL,
+
+  questionCount INT NOT NULL,
+  currentQuestionIndex INT NOT NULL DEFAULT 1,
+  followUpUsed BOOLEAN NOT NULL DEFAULT FALSE,
+  status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
+
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  completedAt DATETIME,
+
+  FOREIGN KEY (userId)
+  REFERENCES users(userId),
+
+  FOREIGN KEY (clubId)
+  REFERENCES clubs(clubId)
+);
+
+CREATE TABLE aiInterviewTurns (
+  turnId BIGINT PRIMARY KEY AUTO_INCREMENT,
+
+  interviewId BIGINT NOT NULL,
+
+  questionIndex INT NOT NULL,
+  questionType VARCHAR(20) NOT NULL,
+  questionText TEXT NOT NULL,
+  sourceType VARCHAR(30) NOT NULL,
+
+  answerText TEXT,
+
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  answeredAt DATETIME,
+
+  FOREIGN KEY (interviewId)
+  REFERENCES aiInterviewSessions(interviewId)
+);
+
+CREATE TABLE aiInterviewResults (
+  resultId BIGINT PRIMARY KEY AUTO_INCREMENT,
+
+  interviewId BIGINT NOT NULL UNIQUE,
+
+  overallSummary TEXT NOT NULL,
+  strengths TEXT,
+  improvements TEXT,
+  evaluationItems TEXT,
+
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (interviewId)
+  REFERENCES aiInterviewSessions(interviewId)
+);
+
+CREATE TABLE aiInterviewFeedbacks (
+  feedbackId BIGINT PRIMARY KEY AUTO_INCREMENT,
+
+  interviewId BIGINT NOT NULL,
+  turnId BIGINT NOT NULL UNIQUE,
+
+  status VARCHAR(30) NOT NULL DEFAULT 'NEEDS_IMPROVEMENT',
+  goodPoints TEXT,
+  missingPoints TEXT,
+  improvementDirection TEXT,
+
+  feedbackText TEXT NOT NULL,
+  improvementText TEXT NOT NULL,
+
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (interviewId)
+  REFERENCES aiInterviewSessions(interviewId),
+
+  FOREIGN KEY (turnId)
+  REFERENCES aiInterviewTurns(turnId)
+);
