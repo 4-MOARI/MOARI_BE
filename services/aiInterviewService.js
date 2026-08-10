@@ -281,7 +281,10 @@ exports.submitAnswer = async ({
 
   const shouldCreateFollowUp =
     !session.followUpUsed &&
-    turn.questionType === 'BASE';
+    turn.questionType === 'BASE' &&
+    aiInterviewAiService.shouldCreateFollowUp({
+      answerText,
+    });
 
   const nextQuestion = aiInterviewAiService.createQuestion({
     club: session,
@@ -418,6 +421,7 @@ exports.getResult = async ({
     overallSummary: result.overallSummary,
     strengths: parseJsonArray(result.strengths),
     improvements: parseJsonArray(result.improvements),
+    evaluationItems: parseJsonArray(result.evaluationItems),
     createdAt: result.createdAt,
   };
 };
@@ -440,6 +444,10 @@ exports.getFeedback = async ({
       questionIndex: feedback.questionIndex,
       questionText: feedback.questionText,
       answerText: feedback.answerText,
+      status: feedback.status,
+      goodPoints: parseJsonArray(feedback.goodPoints),
+      missingPoints: parseJsonArray(feedback.missingPoints),
+      improvementDirection: feedback.improvementDirection,
       feedbackText: feedback.feedbackText,
       improvementText: feedback.improvementText,
     })),

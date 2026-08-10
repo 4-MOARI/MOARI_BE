@@ -203,6 +203,7 @@ CREATE TABLE aiInterviewResults (
   overallSummary TEXT NOT NULL,
   strengths TEXT,
   improvements TEXT,
+  evaluationItems TEXT,
 
   createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -215,6 +216,11 @@ CREATE TABLE aiInterviewFeedbacks (
 
   interviewId BIGINT NOT NULL,
   turnId BIGINT NOT NULL UNIQUE,
+
+  status VARCHAR(30) NOT NULL DEFAULT 'NEEDS_IMPROVEMENT',
+  goodPoints TEXT,
+  missingPoints TEXT,
+  improvementDirection TEXT,
 
   feedbackText TEXT NOT NULL,
   improvementText TEXT NOT NULL,

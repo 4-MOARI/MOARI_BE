@@ -193,6 +193,10 @@ exports.updateSessionProgress = async ({
 exports.createFeedback = async ({
   interviewId,
   turnId,
+  status,
+  goodPoints,
+  missingPoints,
+  improvementDirection,
   feedbackText,
   improvementText,
 }) => {
@@ -201,14 +205,22 @@ exports.createFeedback = async ({
     INSERT INTO aiInterviewFeedbacks (
       interviewId,
       turnId,
+      status,
+      goodPoints,
+      missingPoints,
+      improvementDirection,
       feedbackText,
       improvementText
     )
-    VALUES (?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       interviewId,
       turnId,
+      status,
+      JSON.stringify(goodPoints),
+      JSON.stringify(missingPoints),
+      improvementDirection,
       feedbackText,
       improvementText,
     ]
@@ -227,6 +239,10 @@ exports.findFeedbackByInterviewId = async (interviewId) => {
       t.questionIndex,
       t.questionText,
       t.answerText,
+      f.status,
+      f.goodPoints,
+      f.missingPoints,
+      f.improvementDirection,
       f.feedbackText,
       f.improvementText,
       f.createdAt
@@ -247,6 +263,7 @@ exports.createResult = async ({
   overallSummary,
   strengths,
   improvements,
+  evaluationItems,
 }) => {
   const [result] = await db.query(
     `
@@ -254,15 +271,17 @@ exports.createResult = async ({
       interviewId,
       overallSummary,
       strengths,
-      improvements
+      improvements,
+      evaluationItems
     )
-    VALUES (?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?)
     `,
     [
       interviewId,
       overallSummary,
       JSON.stringify(strengths),
       JSON.stringify(improvements),
+      JSON.stringify(evaluationItems),
     ]
   );
 
@@ -278,6 +297,7 @@ exports.findResultByInterviewId = async (interviewId) => {
       overallSummary,
       strengths,
       improvements,
+      evaluationItems,
       createdAt
     FROM aiInterviewResults
     WHERE interviewId = ?
