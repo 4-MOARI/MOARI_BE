@@ -87,6 +87,8 @@ CREATE TABLE reviews (
   clubId BIGINT NOT NULL,
 
   rating INT NOT NULL,
+  activityRating INT NOT NULL DEFAULT 3,  
+  sociabilityRating INT NOT NULL DEFAULT 3,
   content TEXT,
 
   createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -98,6 +100,31 @@ CREATE TABLE reviews (
 
   FOREIGN KEY (clubId)
   REFERENCES clubs(clubId)
+);
+
+CREATE TABLE reviewKeywords (
+    keywordId BIGINT PRIMARY KEY AUTO_INCREMENT,
+    keywordName VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE reviewKeywordMappings (
+    reviewId BIGINT,
+    keywordId BIGINT,
+    PRIMARY KEY (reviewId, keywordId),
+    FOREIGN KEY (reviewId) REFERENCES reviews(reviewId) ON DELETE CASCADE,
+    FOREIGN KEY (keywordId) REFERENCES reviewKeywords(keywordId) ON DELETE CASCADE
+);
+
+CREATE TABLE clubMetrics (
+    metricId BIGINT PRIMARY KEY AUTO_INCREMENT,
+    clubId BIGINT NOT NULL UNIQUE,
+    
+    avgActivityRating DECIMAL(3,2) DEFAULT 0.00,     -- 활동 강도 평균값
+    avgSociabilityRating DECIMAL(3,2) DEFAULT 0.00,  -- 친목 비중 평균값
+    conflictPotentialScore INT DEFAULT 3,            -- 일정 충돌 예상 점수
+    budgetBurdenScore INT DEFAULT 3,                 -- 예산 부담도 예상 점수
+    
+    FOREIGN KEY (clubId) REFERENCES clubs(clubId) ON DELETE CASCADE
 );
 
 CREATE TABLE reports (
@@ -233,3 +260,12 @@ CREATE TABLE aiInterviewFeedbacks (
   FOREIGN KEY (turnId)
   REFERENCES aiInterviewTurns(turnId)
 );
+
+-- 초기 리뷰 키워드 기본 데이터 삽입
+INSERT INTO reviewKeywords (keywordName) VALUES 
+('친목 많아요'), 
+('개인적이에요'), 
+('뒷풀이 잦아요'), 
+('추가비용 있어요'), 
+('소규모에요'), 
+('체계적이에요');
