@@ -28,7 +28,7 @@ exports.createReview = async ({
   content
 }, connection = db ) => {// 트랜잭션 연결 객체를 받을 수 있도록 기본값 처리
 
-  const [result] = await db.query(
+  const [result] = await connection.query(
     `
     INSERT INTO reviews
     (

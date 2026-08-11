@@ -161,25 +161,17 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
       clubId
     );
 
-  // const reviewsWithMine =
-  // reviews.map((review) => {
+  const reviewsWithMine =
+  reviews.map((review) => {
 
-  //   console.log(
-  //     "review.userId =",
-  //     review.userId
-  //   );
+  
 
-  // console.log(
-  //   "loginUserId =",
-  //   loginUserId
-  // );
-
-  //   return {
-  //     ...review,
-  //     isMine:
-  //       review.userId === loginUserId,
-  //   };
-  // });
+    return {
+      ...review,
+      isMine:
+        review.userId === loginUserId,
+    };
+  });
  
 
   return {
