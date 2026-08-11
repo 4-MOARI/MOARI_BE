@@ -15,7 +15,7 @@ exports.createReview = async (req, res, next) => {
     // 로그인 유저라고 가정
     const userId = req.user.userId;
     //JWT 구현 전 임시 userId
-    //const userId = 1;
+    // const userId = "test_user_id";
 
     const review =
       await reviewService.createReview({
