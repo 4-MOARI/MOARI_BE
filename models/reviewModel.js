@@ -1,4 +1,4 @@
-//리뷰 등록
+//리뷰 등록(수정 26.08.11)
 const db = require('../database/db');
 
 exports.findByUserIdAndClubId = async (
@@ -23,8 +23,10 @@ exports.createReview = async ({
   userId,
   clubId,
   rating,
+  activityRating,
+  sociabilityRating,
   content
-}) => {
+}, connection = db ) => {// 트랜잭션 연결 객체를 받을 수 있도록 기본값 처리
 
   const [result] = await db.query(
     `
@@ -33,19 +35,35 @@ exports.createReview = async ({
       userId,
       clubId,
       rating,
+      activityRating,
+      sociabilityRating,
       content
     )
-    VALUES (?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     `,
     [
       userId,
       clubId,
       rating,
+      activityRating,
+      sociabilityRating,
       content
     ]
   );
 
   return result.insertId;
+};
+
+// [추가] 키워드 다중 매핑 저장 함수
+exports.createReviewKeywords = async (reviewId, keywordIds, connection = db) => {
+  if (!keywordIds || keywordIds.length === 0) return;
+  
+  const mappingValues = keywordIds.map(keywordId => [reviewId, keywordId]);
+  const query = `
+    INSERT INTO reviewKeywordMappings (reviewId, keywordId) 
+    VALUES ?
+  `;
+  await connection.query(query, [mappingValues]);
 };
 
 
@@ -87,6 +105,8 @@ exports.getReviewsByClubId = async (
       reviewId,
       userId,
       rating,
+      activityRating,
+      sociabilityRating,
       content,
       createdAt
 
