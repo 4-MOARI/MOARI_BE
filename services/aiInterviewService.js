@@ -144,7 +144,7 @@ exports.createInterview = async ({
     questionCount,
   });
 
-  const question = aiInterviewAiService.createQuestion({
+  const question = await aiInterviewAiService.createQuestion({
     club,
     questionIndex: 1,
   });
@@ -253,7 +253,8 @@ exports.submitAnswer = async ({
     answerText: answerText.trim(),
   });
 
-  const feedback = aiInterviewAiService.createAnswerFeedback({
+  const feedback = await aiInterviewAiService.createAnswerFeedback({
+    questionText: turn.questionText,
     answerText,
   });
 
@@ -286,7 +287,7 @@ exports.submitAnswer = async ({
       answerText,
     });
 
-  const nextQuestion = aiInterviewAiService.createQuestion({
+  const nextQuestion = await aiInterviewAiService.createQuestion({
     club: session,
     questionIndex: nextQuestionIndex,
     questionType: shouldCreateFollowUp ? 'FOLLOW_UP' : 'BASE',
@@ -374,7 +375,7 @@ exports.completeInterview = async ({
     });
   }
 
-  const result = aiInterviewAiService.createInterviewResult({
+  const result = await aiInterviewAiService.createInterviewResult({
     clubName: session.clubName,
     turns: answeredTurns,
   });

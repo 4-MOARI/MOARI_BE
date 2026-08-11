@@ -1,4 +1,10 @@
+const axios = require('axios');
+
 const concreteAnswerPattern = /\d|프로젝트|경험|역할|결과|활동|사례/;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const GEMINI_API_URL =
+  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const baseQuestionTemplates = [
   (club) => `${club.clubName}에 지원한 이유를 말해주세요.`,
@@ -16,7 +22,71 @@ const baseQuestionTemplates = [
 const hasConcreteAnswer = (answerText) =>
   concreteAnswerPattern.test(answerText);
 
-exports.createQuestion = ({
+const safeJsonParse = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    const matched = text.match(/\{[\s\S]*\}/);
+    if (!matched) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(matched[0]);
+    } catch (parseError) {
+      return null;
+    }
+  }
+};
+
+const callGeminiJson = async ({
+  systemInstruction,
+  prompt,
+}) => {
+  if (!GEMINI_API_KEY) {
+    return null;
+  }
+
+  try {
+    const { data } = await axios.post(
+      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      {
+        systemInstruction: {
+          parts: [{ text: systemInstruction }],
+        },
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          responseMimeType: 'application/json',
+        },
+      },
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const text =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text)
+        .join('')
+        .trim();
+
+    return text ? safeJsonParse(text) : null;
+  } catch (error) {
+    console.error('[AI_INTERVIEW_GEMINI_FALLBACK]', error.response?.data || error.message);
+    return null;
+  }
+};
+
+const createMockQuestion = ({
   club,
   questionIndex,
   questionType = 'BASE',
@@ -43,7 +113,55 @@ exports.createQuestion = ({
   };
 };
 
-exports.createAnswerFeedback = ({
+exports.createQuestion = async ({
+  club,
+  questionIndex,
+  questionType = 'BASE',
+  answerText,
+}) => {
+  const fallback = createMockQuestion({
+    club,
+    questionIndex,
+    questionType,
+  });
+
+  const generated = await callGeminiJson({
+    systemInstruction:
+      '너는 대학 동아리 면접관이다. 지원자가 실제 면접을 연습할 수 있도록 자연스럽고 구체적인 한국어 질문 1개만 생성한다. 반드시 JSON만 응답한다.',
+    prompt: JSON.stringify({
+      responseFormat: {
+        questionType: 'BASE 또는 FOLLOW_UP',
+        sourceType: 'CLUB_INFO 또는 ANSWER_BASED 또는 GENERAL',
+        questionText: '질문 문장',
+      },
+      club: {
+        clubName: club.clubName,
+        briefDescription: club.briefDescription,
+        description: club.description,
+        activity: club.activity,
+      },
+      questionIndex,
+      questionType,
+      previousAnswer: answerText || null,
+      instruction:
+        questionType === 'FOLLOW_UP'
+          ? '이전 답변이 짧거나 구체성이 낮으므로 꼬리질문을 생성한다.'
+          : '동아리 정보와 일반 면접 기준을 반영해 기본 질문을 생성한다.',
+    }),
+  });
+
+  if (!generated?.questionText) {
+    return fallback;
+  }
+
+  return {
+    questionType: generated.questionType || fallback.questionType,
+    sourceType: generated.sourceType || fallback.sourceType,
+    questionText: generated.questionText,
+  };
+};
+
+const createMockAnswerFeedback = ({
   answerText,
 }) => {
   const trimmedAnswer = answerText.trim();
@@ -83,6 +201,55 @@ exports.createAnswerFeedback = ({
   };
 };
 
+exports.createAnswerFeedback = async ({
+  questionText,
+  answerText,
+}) => {
+  const fallback = createMockAnswerFeedback({
+    answerText,
+  });
+
+  const generated = await callGeminiJson({
+    systemInstruction:
+      '너는 대학 동아리 면접 코치다. 지원자의 답변을 평가하고 보완 방향을 한국어로 짧고 실용적으로 제공한다. 반드시 JSON만 응답한다.',
+    prompt: JSON.stringify({
+      responseFormat: {
+        status: 'SUFFICIENT 또는 NEEDS_IMPROVEMENT',
+        goodPoints: ['잘한 점 1', '잘한 점 2'],
+        missingPoints: ['부족한 점 1'],
+        improvementDirection: '개선 방향 한 문장',
+        feedbackText: '전체 피드백 한두 문장',
+        improvementText: '다음 답변에서 바로 적용할 개선 문장',
+      },
+      questionText,
+      answerText,
+      rule:
+        '답변이 짧거나 구체적인 경험, 역할, 결과가 부족하면 NEEDS_IMPROVEMENT로 평가한다.',
+    }),
+  });
+
+  if (!generated?.status) {
+    return fallback;
+  }
+
+  return {
+    status:
+      generated.status === 'SUFFICIENT'
+        ? 'SUFFICIENT'
+        : 'NEEDS_IMPROVEMENT',
+    goodPoints: Array.isArray(generated.goodPoints)
+      ? generated.goodPoints.slice(0, 3)
+      : fallback.goodPoints,
+    missingPoints: Array.isArray(generated.missingPoints)
+      ? generated.missingPoints.slice(0, 3)
+      : fallback.missingPoints,
+    improvementDirection:
+      generated.improvementDirection || fallback.improvementDirection,
+    feedbackText: generated.feedbackText || fallback.feedbackText,
+    improvementText: generated.improvementText || fallback.improvementText,
+  };
+};
+
 exports.shouldCreateFollowUp = ({
   answerText,
 }) => {
@@ -95,7 +262,7 @@ exports.shouldCreateFollowUp = ({
   return !hasConcreteAnswer(trimmedAnswer);
 };
 
-exports.createInterviewResult = ({
+const createMockInterviewResult = ({
   clubName,
   turns,
 }) => {
@@ -155,5 +322,79 @@ exports.createInterviewResult = ({
           : '아직 모든 질문에 대한 답변이 완료되지 않았습니다.',
       },
     ],
+  };
+};
+
+exports.createInterviewResult = async ({
+  clubName,
+  turns,
+}) => {
+  const fallback = createMockInterviewResult({
+    clubName,
+    turns,
+  });
+
+  const generated = await callGeminiJson({
+    systemInstruction:
+      '너는 대학 동아리 모의면접 결과 리포트를 작성하는 평가자다. 전체 답변을 종합해 지원동기, 논리성, 경험의 구체성, 답변 일관성을 평가한다. 반드시 JSON만 응답한다.',
+    prompt: JSON.stringify({
+      responseFormat: {
+        overallSummary: '전체 요약',
+        strengths: ['강점 1', '강점 2'],
+        improvements: ['보완점 1', '보완점 2'],
+        evaluationItems: [
+          {
+            key: 'motivation',
+            label: '지원동기',
+            status: 'SUFFICIENT 또는 NEEDS_IMPROVEMENT',
+            summary: '평가 요약',
+          },
+          {
+            key: 'logic',
+            label: '논리성',
+            status: 'SUFFICIENT 또는 NEEDS_IMPROVEMENT',
+            summary: '평가 요약',
+          },
+          {
+            key: 'experienceSpecificity',
+            label: '경험의 구체성',
+            status: 'SUFFICIENT 또는 NEEDS_IMPROVEMENT',
+            summary: '평가 요약',
+          },
+          {
+            key: 'answerConsistency',
+            label: '답변 일관성',
+            status: 'SUFFICIENT 또는 NEEDS_IMPROVEMENT',
+            summary: '평가 요약',
+          },
+        ],
+      },
+      clubName,
+      turns: turns.map((turn) => ({
+        questionIndex: turn.questionIndex,
+        questionType: turn.questionType,
+        questionText: turn.questionText,
+        answerText: turn.answerText,
+      })),
+    }),
+  });
+
+  if (!generated?.overallSummary) {
+    return fallback;
+  }
+
+  return {
+    overallSummary: generated.overallSummary,
+    strengths: Array.isArray(generated.strengths)
+      ? generated.strengths.slice(0, 5)
+      : fallback.strengths,
+    improvements: Array.isArray(generated.improvements)
+      ? generated.improvements.slice(0, 5)
+      : fallback.improvements,
+    evaluationItems:
+      Array.isArray(generated.evaluationItems) &&
+      generated.evaluationItems.length > 0
+        ? generated.evaluationItems
+        : fallback.evaluationItems,
   };
 };
