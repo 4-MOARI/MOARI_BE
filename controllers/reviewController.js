@@ -44,7 +44,7 @@ exports.getClubReviews = async (req, res, next ) => {
     try {
         const clubId = Number(req.params.clubId);
 
-        //const userId = req.user.userId;
+        const userId = req.user.userId;
 
         const result = 
             await reviewService.getClubReviews( clubId );
