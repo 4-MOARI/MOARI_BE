@@ -109,7 +109,12 @@ exports.getReviewsByClubId = async (
       r.sociabilityRating,
       r.content,
       r.createdAt,
-      GROUP_CONCAT(rk.keywordName) AS tags
+      CASE 
+        WHEN COUNT(rk.keywordId) = 0 THEN JSON_ARRAY()
+        ELSE JSON_ARRAYAGG(
+          JSON_OBJECT('keywordId', rk.keywordId, 'keywordName', rk.keywordName)
+        )
+      END AS keywords
     FROM reviews r
     LEFT JOIN reviewKeywordMappings rkm ON r.reviewId = rkm.reviewId
     LEFT JOIN reviewKeywords rk ON rkm.keywordId = rk.keywordId
