@@ -12,6 +12,8 @@ const authRoutes = require('./routes/authRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const aiInterviewRoutes = require('./routes/aiInterviewRoutes');
 
+const compatibilityRoutes = require('./routes/compatibilityRoute');
+
 const { errorHandler } = require('./middlewares/errorHandler');
 
 const app = express();
