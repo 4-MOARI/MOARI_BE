@@ -168,6 +168,7 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
 
     return {
       ...review,
+      tags: review.tags || [],
       isMine:
         review.userId === loginUserId,
     };

@@ -44,10 +44,10 @@ exports.getClubReviews = async (req, res, next ) => {
     try {
         const clubId = Number(req.params.clubId);
 
-        const userId = req.user.userId;
+        const loginUserId = req.user ? req.user.userId : null;
 
         const result = 
-            await reviewService.getClubReviews( clubId );
+            await reviewService.getClubReviews( clubId, loginUserId );
 
         return res.status(200).json({
             success: true,

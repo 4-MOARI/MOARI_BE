@@ -54,7 +54,7 @@ exports.createReview = async ({
   return result.insertId;
 };
 
-// [추가] 키워드 다중 매핑 저장 함수
+// 키워드 다중 매핑 저장 함수
 exports.createReviewKeywords = async (reviewId, keywordIds, connection = db) => {
   if (!keywordIds || keywordIds.length === 0) return;
   
@@ -102,18 +102,20 @@ exports.getReviewsByClubId = async (
   const [rows] = await db.query(
     `
     SELECT
-      reviewId,
-      userId,
-      rating,
-      activityRating,
-      sociabilityRating,
-      content,
-      createdAt
-
-    FROM reviews
-    WHERE clubId = ?
-
-    ORDER BY createdAt DESC
+      r.reviewId,
+      r.userId,
+      r.rating,
+      r.activityRating,
+      r.sociabilityRating,
+      r.content,
+      r.createdAt,
+      GROUP_CONCAT(rk.keywordName) AS tags
+    FROM reviews r
+    LEFT JOIN reviewKeywordMappings rkm ON r.reviewId = rkm.reviewId
+    LEFT JOIN reviewKeywords rk ON rkm.keywordId = rk.keywordId
+    WHERE r.clubId = ?
+    GROUP BY r.reviewId
+    ORDER BY r.createdAt DESC
     `,
     [clubId]
   );
