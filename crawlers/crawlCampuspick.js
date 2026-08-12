@@ -1,7 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-const API_URL = process.env.CRAWL_API_URL || 'http://localhost:3000/api/crawl';
+const API_URL = 'http://34.64.200.191:3000/api/crawl';
 
 const BASE_URL = 'https://www.campuspick.com';
 const LIST_URL = 'https://www.campuspick.com/club';
@@ -244,7 +244,7 @@ async function crawlCampuspick() {
         coverImageUrl: recruit.image || null,
         recruitStartAt: recruit.startDate || null,
         recruitEndAt: recruit.endDate || null,
-        lastModifiedBy: 'test01',
+        lastModifiedBy: 'mingang1022',
         links: extractExternalLinks(recruitDescription),
       });
 
