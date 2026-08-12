@@ -305,9 +305,9 @@ exports.registerClub = async (clubData) => {
   let recruitStartAt = null;
   let recruitEndAt = null;
 
-  if (updateData.recruitPeriod) {
-    recruitStartAt = updateData.recruitPeriod.start || null;
-    recruitEndAt = updateData.recruitPeriod.end || null;
+  if (clubData.recruitPeriod) {
+    recruitStartAt = clubData.recruitPeriod.start || null;
+    recruitEndAt = clubData.recruitPeriod.end || null;
   }
 
   const safeClubData = {
