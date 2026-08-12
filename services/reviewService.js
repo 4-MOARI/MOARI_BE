@@ -1,18 +1,24 @@
 const reviewModel = require('../models/reviewModel');
 const clubModel = require('../models/clubModel');
+const db = require('../database/db'); // 트랜잭션 처리를 위한 db 객체 import
 
 exports.createReview = async ({
   userId,
   clubId,
   rating,
-  content
+  activityRating,
+  sociabilityRating,
+  content,
+  keywordIds
 }) => {
 
-  // 입력값 검증
+  // 1.입력값 검증(rating, activityRating, sociabilityRating 모두 1~5 정수 검증)
   if (
     !Number.isInteger(rating) ||
     rating < 1 ||
     rating > 5 ||
+    (activityRating && (!Number.isInteger(activityRating) || activityRating < 1 || activityRating > 5)) ||
+    (sociabilityRating && (!Number.isInteger(sociabilityRating) || sociabilityRating < 1 || sociabilityRating > 5)) ||
     !content ||
     content.trim() === ''
   ) {
@@ -27,7 +33,7 @@ exports.createReview = async ({
     throw error;
   }
 
-  // 1. 동아리 존재 확인
+  // 2. 동아리 존재 확인
   const club =
     await clubModel.findClubById(clubId);
 
@@ -43,7 +49,7 @@ exports.createReview = async ({
     throw error;
   }
 
-  // 2. 중복 리뷰 확인
+  // 3. 중복 리뷰 확인
   const existingReview =
     await reviewModel.findByUserIdAndClubId(
       userId,
@@ -56,30 +62,56 @@ exports.createReview = async ({
       '이미 해당 동아리에 리뷰를 작성했습니다.'
     );
 
-    error.status = 400;
-    error.code = 'REVIEW_ALREADY_EXISTS';
+    error.status = 409;
+    error.code = 'REVIEW_409';
 
     throw error;
   }
 
-  // 3. 리뷰 저장
-  const reviewId =
-    await reviewModel.createReview({
+  // 트랜잭션 시작 (리뷰 테이블과 키워드 매핑 테이블을 동시에 안전하게 저장하기 위함)
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 4. 리뷰 저장
+    const finalActivityRating = activityRating || 3;
+    const finalSociabilityRating = sociabilityRating || 3;
+
+    const reviewId = await reviewModel.createReview({
       userId,
       clubId,
       rating,
+      activityRating: finalActivityRating,
+      sociabilityRating: finalSociabilityRating,
       content
-    });
+    }, connection);
 
-  // 4. 반환
-  return {
-    reviewId,
-    userId,
-    clubId,
-    rating,
-    content,
-    createdAt: new Date()
-  };
+    // 5. 키워드 매핑 저장
+    if (keywordIds && Array.isArray(keywordIds) && keywordIds.length > 0) {
+      await reviewModel.createReviewKeywords(reviewId, keywordIds, connection);
+    }
+
+    await connection.commit();
+
+    // 6. 반환 데이터 구성 
+    return {
+      reviewId,
+      userId,
+      clubId: Number(clubId),
+      rating,
+      activityRating: finalActivityRating,
+      sociabilityRating: finalSociabilityRating,
+      content,
+      keywordIds: keywordIds || [],
+      createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+    };
+
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 };
 
 
@@ -128,34 +160,18 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
     await reviewModel.getReviewsByClubId(
       clubId
     );
-    //내가 쓴 리뷰
-//   const reviewsWithMine =
-//   reviews.map((review) => ({
-//     ...review,
-//     isMine:
-//       Number(review.userId) ===
-//       Number(loginUserId),
-//   }));
-//콘솔찍어봄!(삭제예정)
-const reviewsWithMine =
-reviews.map((review) => {
 
-  console.log(
-    "review.userId =",
-    review.userId
-  );
+  const reviewsWithMine =
+  reviews.map((review) => {
 
-  console.log(
-    "loginUserId =",
-    loginUserId
-  );
+  
 
-  return {
-    ...review,
-    isMine:
-      review.userId === loginUserId,
-  };
-});
+    return {
+      ...review,
+      isMine:
+        review.userId === loginUserId,
+    };
+  });
  
 
   return {

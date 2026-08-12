@@ -253,6 +253,69 @@ exports.insertClubLinks = async (clubId, links) => {
   return savedLinks;
 };
 
+// 동아리 정기 활동 시간 저장
+exports.insertClubSchedules = async (clubId, schedules) => {
+  if (!schedules || schedules.length === 0) return [];
+
+  const savedSchedules = [];
+
+  for (const schedule of schedules) {
+    await db.query(
+      `
+      INSERT INTO clubSchedules (
+        clubId,
+        dayOfWeek,
+        startTime,
+        endTime
+      )
+      VALUES (?, ?, ?, ?)
+      `,
+      [
+        clubId,
+        schedule.dayOfWeek,
+        schedule.startTime,
+        schedule.endTime
+      ]
+    );
+
+    savedSchedules.push(schedule);
+  }
+
+  return savedSchedules;
+};
+
+// 동아리 정기 활동 시간 삭제
+exports.deleteClubSchedulesByClubId = async (clubId) => {
+  const [result] = await db.query(
+    `
+    DELETE FROM clubSchedules
+    WHERE clubId = ?
+    `,
+    [clubId]
+  );
+
+  return result.affectedRows;
+};
+
+// 동아리 정기 활동 시간 조회
+exports.findClubSchedulesByClubId = async (clubId) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+      scheduleId,
+      dayOfWeek,
+      startTime,
+      endTime
+    FROM clubSchedules
+    WHERE clubId = ?
+    ORDER BY scheduleId ASC
+    `,
+    [clubId]
+  );
+
+  return rows;
+};
+
 // [추가 스펙] 수정 시 기존 동적 URL을 깨끗하게 비워주기 위한 삭제 메서드
 exports.deleteClubLinksByClubId = async (clubId) => {
   const [result] = await db.query(
@@ -269,7 +332,7 @@ exports.deleteClubLinksByClubId = async (clubId) => {
 exports.getClubDetailById = async (clubId, { userId } = {}) => {
   const [rows] = await db.query(
     `
-    SELECT 
+    SELECT
       c.clubId,
       c.clubName,
       c.briefDescription,
@@ -283,11 +346,15 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
       c.recruitStartAt,
       c.recruitEndAt,
       c.updatedAt,
+
       TIMESTAMPDIFF(YEAR, c.updatedAt, NOW()) AS yearsSinceUpdate,
+
       CASE
-        WHEN c.updatedAt < DATE_SUB(NOW(), INTERVAL 1 YEAR) THEN 1
+        WHEN c.updatedAt < DATE_SUB(NOW(), INTERVAL 1 YEAR)
+        THEN 1
         ELSE 0
       END AS displayWarning,
+
       CASE
         WHEN c.updatedAt < DATE_SUB(NOW(), INTERVAL 1 YEAR)
         THEN CONCAT(
@@ -296,28 +363,70 @@ exports.getClubDetailById = async (clubId, { userId } = {}) => {
         )
         ELSE NULL
       END AS warningMessage,
+
       COUNT(DISTINCT f.userId) AS favoriteCount,
+
       ${
         userId
-          ? `MAX(CASE WHEN uf.userId IS NULL THEN 0 ELSE 1 END)`
+          ? `MAX(
+              CASE
+                WHEN uf.userId IS NULL THEN 0
+                ELSE 1
+              END
+            )`
           : `0`
       } AS isFavorite
+
     FROM clubs c
-    LEFT JOIN categories cat ON c.categoryId = cat.categoryId
-    LEFT JOIN schools s ON c.schoolId = s.schoolId
-    LEFT JOIN favorites f ON c.clubId = f.clubId
+
+    LEFT JOIN categories cat
+      ON c.categoryId = cat.categoryId
+
+    LEFT JOIN schools s
+      ON c.schoolId = s.schoolId
+
+    LEFT JOIN favorites f
+      ON c.clubId = f.clubId
+
     ${
       userId
-        ? `LEFT JOIN favorites uf ON c.clubId = uf.clubId AND uf.userId = ?`
-        : ``
+        ? `
+          LEFT JOIN favorites uf
+            ON c.clubId = uf.clubId
+            AND uf.userId = ?
+        `
+        : ''
     }
+
     WHERE c.clubId = ?
-    GROUP BY c.clubId, c.clubName, c.briefDescription, c.description, c.activity,
-         c.profileImageUrl, c.coverImageUrl, c.schoolId, s.schoolName, cat.categoryName,
-         c.recruitStartAt, c.recruitEndAt, c.updatedAt`,
+
+    GROUP BY
+      c.clubId,
+      c.clubName,
+      c.briefDescription,
+      c.description,
+      c.activity,
+      c.profileImageUrl,
+      c.coverImageUrl,
+      c.schoolId,
+      s.schoolName,
+      cat.categoryName,
+      c.recruitStartAt,
+      c.recruitEndAt,
+      c.updatedAt
+    `,
     userId ? [userId, clubId] : [clubId]
   );
-  return rows[0];
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return {
+    ...rows[0],
+    favoriteCount: Number(rows[0].favoriteCount || 0),
+    isFavorite: Boolean(Number(rows[0].isFavorite)),
+  };
 };
 
 // 특정 동아리에 연결된 링크들 조회
