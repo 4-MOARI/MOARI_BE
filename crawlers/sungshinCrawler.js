@@ -1,4 +1,6 @@
-const API_URL = 'http://34.50.19.72:3000/api/crawl';
+/*const API_URL = 'http://34.50.19.72:3000/api/crawl';
+const API_URL = 'http://localhost:3000/api/crawl'; */
+const API_URL = 'http://34.64.200.191:3000/api/crawl';
 
 const axios = require('axios');
 const cheerio = require('cheerio');
@@ -75,7 +77,7 @@ async function crawlSungshin() {
             coverImageUrl: null,
             recruitStartAt: null,
             recruitEndAt: null,
-            lastModifiedBy: 'test01',
+            lastModifiedBy: 'mingang1022',
             links: []
           });
         });

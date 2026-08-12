@@ -503,6 +503,13 @@ exports.updateClub = async (clubId, updateData) => {
     if (formattedLinks.length > 0) {
       await clubModel.insertClubLinks(clubId, formattedLinks);
     }
+    if (
+      clubData.schedules &&
+      Array.isArray(clubData.schedules) &&
+      clubData.schedules.length > 0
+    ) {
+      await clubModel.insertClubSchedules(newClubId, clubData.schedules);
+    }
   }
 
   await clubModel.deleteClubSchedulesByClubId(clubId);
