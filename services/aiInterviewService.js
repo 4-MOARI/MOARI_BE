@@ -101,12 +101,78 @@ const formatTurn = (turn) => ({
 
 const parseJsonArray = (value) => {
   if (!value) return [];
+  if (Array.isArray(value)) return value;
 
   try {
     return JSON.parse(value);
   } catch (error) {
     return [];
   }
+};
+
+const formatInterviewReviewSources = (reviews) =>
+  reviews.map((review) => ({
+    interviewReviewId: review.interviewReviewId,
+    interviewMethod: review.interviewMethod,
+    interviewType: review.interviewType,
+    atmosphere: review.atmosphere,
+    difficulty: review.difficulty,
+    duration: review.duration,
+    competencies: parseJsonArray(review.competencies),
+    questions: parseJsonArray(review.questions),
+    tip: review.tip,
+  }));
+
+const getInterviewReviewSources = async (clubId) => {
+  const reviews = await aiInterviewModel.findInterviewReviewSourcesByClubId({
+    clubId,
+    limit: 5,
+  });
+
+  return formatInterviewReviewSources(reviews);
+};
+
+const createResultIfReady = async ({
+  interviewId,
+  session,
+}) => {
+  const existingResult = await aiInterviewModel.findResultByInterviewId(interviewId);
+
+  if (existingResult) {
+    return existingResult;
+  }
+
+  const turns = await aiInterviewModel.findTurnsByInterviewId(interviewId);
+  const answeredTurns = turns.filter((turn) => turn.answerText);
+
+  if (answeredTurns.length < session.questionCount) {
+    throw createError({
+      status: 400,
+      code: 'AI_INTERVIEW_RESULT_NOT_READY',
+      message: '모든 질문에 답변한 뒤 결과를 조회할 수 있습니다.',
+    });
+  }
+
+  const result = await aiInterviewAiService.createInterviewResult({
+    clubName: session.clubName,
+    turns: answeredTurns,
+  });
+
+  const resultId = await aiInterviewModel.createResult({
+    interviewId,
+    ...result,
+  });
+
+  await aiInterviewModel.updateSessionProgress({
+    interviewId,
+    status: 'COMPLETED',
+  });
+
+  return {
+    resultId,
+    ...result,
+    createdAt: new Date(),
+  };
 };
 
 exports.getOptions = async ({
@@ -118,12 +184,14 @@ exports.getOptions = async ({
   const club = await clubModel.findClubById(clubId);
   assertClubAccessible(club, user);
 
+  const interviewReviewSources = await getInterviewReviewSources(clubId);
+
   return {
     clubId: club.clubId,
     clubName: club.clubName,
     questionCountOptions: VALID_QUESTION_COUNTS,
     defaultQuestionCount: 5,
-    hasInterviewReviewData: false,
+    hasInterviewReviewData: interviewReviewSources.length > 0,
   };
 };
 
@@ -138,6 +206,8 @@ exports.createInterview = async ({
   const club = await clubModel.findClubById(clubId);
   assertClubAccessible(club, user);
 
+  const interviewReviewSources = await getInterviewReviewSources(clubId);
+
   const interviewId = await aiInterviewModel.createSession({
     userId: user.userId,
     clubId,
@@ -147,6 +217,7 @@ exports.createInterview = async ({
   const question = await aiInterviewAiService.createQuestion({
     club,
     questionIndex: 1,
+    interviewReviewSources,
   });
 
   const turnId = await aiInterviewModel.createTurn({
@@ -287,11 +358,16 @@ exports.submitAnswer = async ({
       answerText,
     });
 
+  const interviewReviewSources = shouldCreateFollowUp
+    ? []
+    : await getInterviewReviewSources(session.clubId);
+
   const nextQuestion = await aiInterviewAiService.createQuestion({
     club: session,
     questionIndex: nextQuestionIndex,
     questionType: shouldCreateFollowUp ? 'FOLLOW_UP' : 'BASE',
     answerText,
+    interviewReviewSources,
   });
 
   const nextTurnId = await aiInterviewModel.createTurn({
@@ -354,46 +430,15 @@ exports.completeInterview = async ({
     user,
   });
 
-  const existingResult = await aiInterviewModel.findResultByInterviewId(interviewId);
-
-  if (existingResult) {
-    return {
-      interviewId,
-      status: 'COMPLETED',
-      resultId: existingResult.resultId,
-    };
-  }
-
-  const turns = await aiInterviewModel.findTurnsByInterviewId(interviewId);
-  const answeredTurns = turns.filter((turn) => turn.answerText);
-
-  if (answeredTurns.length < session.questionCount) {
-    throw createError({
-      status: 400,
-      code: 'AI_INTERVIEW_400',
-      message: '모든 질문에 답변한 뒤 결과를 생성할 수 있습니다.',
-    });
-  }
-
-  const result = await aiInterviewAiService.createInterviewResult({
-    clubName: session.clubName,
-    turns: answeredTurns,
-  });
-
-  const resultId = await aiInterviewModel.createResult({
+  const result = await createResultIfReady({
     interviewId,
-    ...result,
-  });
-
-  await aiInterviewModel.updateSessionProgress({
-    interviewId,
-    status: 'COMPLETED',
+    session,
   });
 
   return {
     interviewId,
     status: 'COMPLETED',
-    resultId,
+    resultId: result.resultId,
   };
 };
 
@@ -406,15 +451,10 @@ exports.getResult = async ({
     user,
   });
 
-  const result = await aiInterviewModel.findResultByInterviewId(interviewId);
-
-  if (!result) {
-    throw createError({
-      status: 404,
-      code: 'AI_INTERVIEW_RESULT_404',
-      message: 'AI 모의면접 결과를 찾을 수 없습니다.',
-    });
-  }
+  const result = await createResultIfReady({
+    interviewId,
+    session,
+  });
 
   return {
     interviewId,

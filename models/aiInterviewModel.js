@@ -307,3 +307,31 @@ exports.findResultByInterviewId = async (interviewId) => {
 
   return rows[0];
 };
+
+exports.findInterviewReviewSourcesByClubId = async ({
+  clubId,
+  limit = 5,
+}) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+      interviewReviewId,
+      interviewMethod,
+      interviewType,
+      atmosphere,
+      difficulty,
+      duration,
+      competencies,
+      questions,
+      tip
+    FROM interview_reviews
+    WHERE clubId = ?
+      AND hasInterview = TRUE
+    ORDER BY createdAt DESC
+    LIMIT ?
+    `,
+    [clubId, limit]
+  );
+
+  return rows;
+};
