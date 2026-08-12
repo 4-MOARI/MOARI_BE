@@ -1,5 +1,51 @@
-const clubModel = require('../models/clubModel');
 const interviewReviewModel = require('../models/interviewReviewModel');
+
+const VALID_METHODS = [
+  'FACE_TO_FACE',
+  'OFFLINE',
+  'ONLINE',
+  'MIXED',
+];
+
+const VALID_TYPES = [
+  'INDIVIDUAL',
+  'PERSONAL',
+  'GROUP',
+  'MANY_TO_ONE',
+  'MANY_TO_MANY',
+];
+
+const VALID_ATMOSPHERES = [
+  'COMFORTABLE',
+  'NORMAL',
+  'PRESSURE',
+];
+
+const VALID_DIFFICULTIES = [
+  'EASY',
+  'NORMAL',
+  'HARD',
+];
+
+const VALID_DURATIONS = [
+  'UNDER_10',
+  'MIN_10_20',
+  'MIN_20_30',
+  'OVER_30',
+];
+
+const VALID_COMPETENCIES = [
+  'MOTIVATION',
+  'TEAMWORK',
+  'PROJECT_EXPERIENCE',
+  'PROBLEM_SOLVING',
+  'COMMUNICATION',
+  'RESPONSIBILITY',
+  'ACTIVENESS',
+  'LEADERSHIP',
+  'MAJOR_KNOWLEDGE',
+  'CREATIVITY',
+];
 
 const createError = ({
   status,
@@ -33,6 +79,31 @@ const normalizeStringArray = (value) => {
     .filter(Boolean);
 };
 
+const validateClubId = (clubId) => {
+  if (!Number.isInteger(clubId) || clubId <= 0) {
+    throw createError({
+      status: 400,
+      code: 'INTERVIEW_REVIEW_400',
+      message: '올바른 동아리 ID가 아닙니다.',
+    });
+  }
+};
+
+const validateIncluded = ({
+  value,
+  validValues,
+  code,
+  message,
+}) => {
+  if (!value || !validValues.includes(value)) {
+    throw createError({
+      status: 400,
+      code,
+      message,
+    });
+  }
+};
+
 const formatReview = (review) => ({
   interviewReviewId: review.interviewReviewId,
   clubId: review.clubId,
@@ -51,7 +122,7 @@ const formatReview = (review) => ({
   updatedAt: review.updatedAt,
 });
 
-exports.createInterviewReviewService = async ({
+const createInterviewReviewService = async ({
   clubId,
   userId,
   hasInterview,
@@ -64,20 +135,22 @@ exports.createInterviewReviewService = async ({
   questions,
   tip,
 }) => {
-  if (!Number.isInteger(clubId) || clubId <= 0) {
-    throw createError({
-      status: 400,
-      code: 'INTERVIEW_REVIEW_400',
-      message: '올바른 동아리 ID가 아닙니다.',
-    });
-  }
+  validateClubId(clubId);
 
-  const club = await clubModel.findClubById(clubId);
+  const club = await interviewReviewModel.findClubById(clubId);
   if (!club) {
     throw createError({
       status: 404,
-      code: 'CLUB_404',
+      code: 'CLUB_4041',
       message: '존재하지 않는 동아리입니다.',
+    });
+  }
+
+  if (typeof hasInterview !== 'boolean') {
+    throw createError({
+      status: 400,
+      code: 'INTERVIEW_4001',
+      message: '면접 여부를 선택해주세요.',
     });
   }
 
@@ -94,10 +167,82 @@ exports.createInterviewReviewService = async ({
     });
   }
 
-  const normalizedQuestions = normalizeStringArray(questions);
-  const normalizedCompetencies = normalizeStringArray(competencies);
+  if (!hasInterview) {
+    const interviewReviewId =
+      await interviewReviewModel.createInterviewReview({
+        clubId,
+        userId,
+        hasInterview: false,
+        interviewMethod: null,
+        interviewType: null,
+        atmosphere: null,
+        difficulty: null,
+        duration: null,
+        competencies: [],
+        questions: [],
+        tip: null,
+      });
 
-  if (hasInterview && normalizedQuestions.length === 0) {
+    return {
+      interviewReviewId,
+      clubId,
+      clubName: club.clubName,
+      userId,
+      hasInterview: false,
+    };
+  }
+
+  validateIncluded({
+    value: interviewMethod,
+    validValues: VALID_METHODS,
+    code: 'INTERVIEW_4002',
+    message: '올바른 면접 방식을 선택해주세요.',
+  });
+
+  validateIncluded({
+    value: interviewType,
+    validValues: VALID_TYPES,
+    code: 'INTERVIEW_4003',
+    message: '올바른 면접 형태를 선택해주세요.',
+  });
+
+  validateIncluded({
+    value: atmosphere,
+    validValues: VALID_ATMOSPHERES,
+    code: 'INTERVIEW_4004',
+    message: '면접 분위기를 선택해주세요.',
+  });
+
+  validateIncluded({
+    value: difficulty,
+    validValues: VALID_DIFFICULTIES,
+    code: 'INTERVIEW_4005',
+    message: '면접 난이도를 선택해주세요.',
+  });
+
+  validateIncluded({
+    value: duration,
+    validValues: VALID_DURATIONS,
+    code: 'INTERVIEW_4006',
+    message: '면접 시간을 선택해주세요.',
+  });
+
+  const competencyList = normalizeStringArray(competencies);
+  const hasInvalidCompetency = competencyList.some(
+    (competency) => !VALID_COMPETENCIES.includes(competency)
+  );
+
+  if (hasInvalidCompetency) {
+    throw createError({
+      status: 400,
+      code: 'INTERVIEW_4007',
+      message: '올바르지 않은 역량 항목이 포함되어 있습니다.',
+    });
+  }
+
+  const questionList = normalizeStringArray(questions);
+
+  if (questionList.length === 0) {
     throw createError({
       status: 400,
       code: 'INTERVIEW_REVIEW_QUESTION_REQUIRED',
@@ -105,50 +250,46 @@ exports.createInterviewReviewService = async ({
     });
   }
 
-  const interviewReviewId = await interviewReviewModel.createInterviewReview({
-    clubId,
-    userId,
-    hasInterview: Boolean(hasInterview),
-    interviewMethod: interviewMethod || null,
-    interviewType: interviewType || null,
-    atmosphere: atmosphere || null,
-    difficulty: difficulty || null,
-    duration: duration || null,
-    competencies: normalizedCompetencies,
-    questions: normalizedQuestions,
-    tip: tip || null,
-  });
+  const interviewReviewId =
+    await interviewReviewModel.createInterviewReview({
+      clubId,
+      userId,
+      hasInterview,
+      interviewMethod,
+      interviewType,
+      atmosphere,
+      difficulty,
+      duration,
+      competencies: competencyList,
+      questions: questionList,
+      tip,
+    });
 
   return {
     interviewReviewId,
     clubId,
+    clubName: club.clubName,
     userId,
-    hasInterview: Boolean(hasInterview),
-    interviewMethod: interviewMethod || null,
-    interviewType: interviewType || null,
-    atmosphere: atmosphere || null,
-    difficulty: difficulty || null,
-    duration: duration || null,
-    competencies: normalizedCompetencies,
-    questions: normalizedQuestions,
+    hasInterview,
+    interviewMethod,
+    interviewType,
+    atmosphere,
+    difficulty,
+    duration,
+    competencies: competencyList,
+    questions: questionList,
     tip: tip || null,
   };
 };
 
-exports.getInterviewReviewsService = async (clubId) => {
-  if (!Number.isInteger(clubId) || clubId <= 0) {
-    throw createError({
-      status: 400,
-      code: 'INTERVIEW_REVIEW_400',
-      message: '올바른 동아리 ID가 아닙니다.',
-    });
-  }
+const getInterviewReviewsService = async (clubId) => {
+  validateClubId(clubId);
 
-  const club = await clubModel.findClubById(clubId);
+  const club = await interviewReviewModel.findClubById(clubId);
   if (!club) {
     throw createError({
       status: 404,
-      code: 'CLUB_404',
+      code: 'CLUB_4041',
       message: '존재하지 않는 동아리입니다.',
     });
   }
@@ -156,8 +297,14 @@ exports.getInterviewReviewsService = async (clubId) => {
   const reviews = await interviewReviewModel.findByClubId(clubId);
 
   return {
-    clubId,
+    clubId: Number(clubId),
+    clubName: club.clubName,
     totalCount: reviews.length,
     reviews: reviews.map(formatReview),
   };
+};
+
+module.exports = {
+  createInterviewReviewService,
+  getInterviewReviewsService,
 };

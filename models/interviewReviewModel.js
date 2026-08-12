@@ -1,6 +1,6 @@
 const db = require('../database/db');
 
-exports.findByUserIdAndClubId = async ({
+const findByUserIdAndClubId = async ({
   userId,
   clubId,
 }) => {
@@ -17,7 +17,7 @@ exports.findByUserIdAndClubId = async ({
   return rows[0];
 };
 
-exports.createInterviewReview = async ({
+const createInterviewReview = async ({
   clubId,
   userId,
   hasInterview,
@@ -58,14 +58,14 @@ exports.createInterviewReview = async ({
       duration,
       JSON.stringify(competencies || []),
       JSON.stringify(questions || []),
-      tip,
+      tip || null,
     ]
   );
 
   return result.insertId;
 };
 
-exports.findByClubId = async (clubId) => {
+const findByClubId = async (clubId) => {
   const [rows] = await db.query(
     `
     SELECT
@@ -96,7 +96,7 @@ exports.findByClubId = async (clubId) => {
   return rows;
 };
 
-exports.findQuestionSourcesByClubId = async ({
+const findQuestionSourcesByClubId = async ({
   clubId,
   limit = 5,
 }) => {
@@ -122,4 +122,26 @@ exports.findQuestionSourcesByClubId = async ({
   );
 
   return rows;
+};
+
+const findClubById = async (clubId) => {
+  const [rows] = await db.query(
+    `
+    SELECT clubId, clubName
+    FROM clubs
+    WHERE clubId = ?
+    `,
+    [clubId]
+  );
+
+  return rows[0];
+};
+
+module.exports = {
+  findByUserIdAndClubId,
+  createInterviewReview,
+  findByClubId,
+  findQuestionSourcesByClubId,
+  findInterviewReviewsByClubId: findByClubId,
+  findClubById,
 };
