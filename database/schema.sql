@@ -65,6 +65,19 @@ CREATE TABLE clubs (
   REFERENCES users(userId)
 );
 
+CREATE TABLE clubSchedules (
+scheduleId BIGINT PRIMARY KEY AUTO_INCREMENT,
+
+clubId BIGINT NOT NULL,
+dayOfWeek VARCHAR(20) NOT NULL,
+startTime TIME NOT NULL,
+endTime TIME NOT NULL,
+
+FOREIGN KEY (clubId)
+REFERENCES clubs(clubId)
+ON DELETE CASCADE
+);
+
 CREATE TABLE favorites (
   userId VARCHAR(50),
   clubId BIGINT,
@@ -87,8 +100,10 @@ CREATE TABLE reviews (
   clubId BIGINT NOT NULL,
 
   rating INT NOT NULL,
-  activityRating INT NOT NULL DEFAULT 3,  
+  activityRating INT NOT NULL DEFAULT 3,
   sociabilityRating INT NOT NULL DEFAULT 3,
+  activityIntensity INT NOT NULL DEFAULT 3,
+  socialLevel INT NOT NULL DEFAULT 3,
   content TEXT,
 
   createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
