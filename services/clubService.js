@@ -231,6 +231,7 @@ exports.getClubDetail = async (clubId, { userId, userSchoolId } = {}) => {
   return {
     clubId: clubDetail.clubId,
     clubName: clubDetail.clubName,
+    favoriteCount: Number(clubDetail.favoriteCount ?? 0),
     briefDescription: clubDetail.briefDescription || '',
     description: clubDetail.description || '',
     activity: clubDetail.activity || '',
