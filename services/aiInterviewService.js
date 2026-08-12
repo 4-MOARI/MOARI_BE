@@ -109,6 +109,39 @@ const parseJsonArray = (value) => {
   }
 };
 
+const createResultIfReady = async ({
+  interviewId,
+  session,
+}) => {
+  const turns = await aiInterviewModel.findTurnsByInterviewId(interviewId);
+  const answeredTurns = turns.filter((turn) => turn.answerText);
+
+  if (answeredTurns.length < session.questionCount) {
+    throw createError({
+      status: 400,
+      code: 'AI_INTERVIEW_RESULT_NOT_READY',
+      message: '모든 질문에 답변한 뒤 결과를 조회할 수 있습니다.',
+    });
+  }
+
+  const result = await aiInterviewAiService.createInterviewResult({
+    clubName: session.clubName,
+    turns: answeredTurns,
+  });
+
+  const resultId = await aiInterviewModel.createResult({
+    interviewId,
+    ...result,
+  });
+
+  await aiInterviewModel.updateSessionProgress({
+    interviewId,
+    status: 'COMPLETED',
+  });
+
+  return resultId;
+};
+
 exports.getOptions = async ({
   clubId,
   user,
@@ -364,30 +397,9 @@ exports.completeInterview = async ({
     };
   }
 
-  const turns = await aiInterviewModel.findTurnsByInterviewId(interviewId);
-  const answeredTurns = turns.filter((turn) => turn.answerText);
-
-  if (answeredTurns.length < session.questionCount) {
-    throw createError({
-      status: 400,
-      code: 'AI_INTERVIEW_400',
-      message: '모든 질문에 답변한 뒤 결과를 생성할 수 있습니다.',
-    });
-  }
-
-  const result = await aiInterviewAiService.createInterviewResult({
-    clubName: session.clubName,
-    turns: answeredTurns,
-  });
-
-  const resultId = await aiInterviewModel.createResult({
+  const resultId = await createResultIfReady({
     interviewId,
-    ...result,
-  });
-
-  await aiInterviewModel.updateSessionProgress({
-    interviewId,
-    status: 'COMPLETED',
+    session,
   });
 
   return {
@@ -406,14 +418,15 @@ exports.getResult = async ({
     user,
   });
 
-  const result = await aiInterviewModel.findResultByInterviewId(interviewId);
+  let result = await aiInterviewModel.findResultByInterviewId(interviewId);
 
   if (!result) {
-    throw createError({
-      status: 404,
-      code: 'AI_INTERVIEW_RESULT_404',
-      message: 'AI 모의면접 결과를 찾을 수 없습니다.',
+    await createResultIfReady({
+      interviewId,
+      session,
     });
+
+    result = await aiInterviewModel.findResultByInterviewId(interviewId);
   }
 
   return {
