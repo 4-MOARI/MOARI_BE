@@ -38,6 +38,9 @@ app.use('/api', userRoutes);
 app.use('/api', aiInterviewRoutes);
 app.use('/api/uploads', uploadRoutes);
 
+//추가
+app.use('/api/compatibility', compatibilityRoutes);
+
 app.use(errorHandler);
 
 module.exports = app;
