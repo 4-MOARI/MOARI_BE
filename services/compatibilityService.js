@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require('@google/genai');
+const clubModel = require('../models/clubModel');
 
 // @google/genai SDK는 환경 변수(process.env.GEMINI_API_KEY)를 자동 인식합니다.
 const ai = new GoogleGenAI({});
