@@ -92,3 +92,22 @@ exports.deleteReview = async (
         next(error);
     }
 };
+
+// 특정 동아리 리뷰 대표 키워드 조회
+exports.getTopKeywords = async (req, res, next) => {
+  try {
+    const clubId = Number(req.params.clubId);
+
+    const keywords =
+      await reviewService.getTopKeywordsByClubId(clubId);
+
+    return res.status(200).json({
+      success: true,
+      data: keywords,
+      error: null
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};

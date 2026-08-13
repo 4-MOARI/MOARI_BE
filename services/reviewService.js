@@ -11,7 +11,6 @@ exports.createReview = async ({
   content,
   keywordIds
 }) => {
-
   // 1.입력값 검증(rating, activityRating, sociabilityRating 모두 1~5 정수 검증)
   if (
     !Number.isInteger(rating) ||
@@ -168,7 +167,7 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
 
     return {
       ...review,
-      tags: review.tags || [],
+      keywords: review.keywords || [],
       isMine:
         review.userId === loginUserId,
     };
@@ -249,7 +248,40 @@ exports.deleteReview = async ({
   );
 };
 
+/**
+ * 특정 동아리의 리뷰 대표 키워드 조회
+ */
+exports.getTopKeywordsByClubId = async (clubId) => {
 
+  // clubId 검증
+  if (!clubId || isNaN(clubId)) {
+    const error = new Error(
+      '올바른 동아리 ID가 아닙니다.'
+    );
 
+    error.status = 400;
+    error.code = 'REVIEW_400';
 
+    throw error;
+  }
 
+  // 동아리 존재 여부 확인
+  const club =
+    await clubModel.findClubById(clubId);
+
+  if (!club) {
+    const error = new Error(
+      '존재하지 않는 동아리입니다.'
+    );
+
+    error.status = 404;
+    error.code = 'CLUB_404';
+
+    throw error;
+  }
+
+  const keywords =
+    await reviewModel.getTopKeywordsByClubId(clubId);
+
+  return keywords;
+};

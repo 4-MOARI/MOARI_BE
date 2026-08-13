@@ -29,15 +29,16 @@ router.post(
 //리뷰 전체 조회
 
 router.get(
-
     '/api/clubs/:clubId/reviews',
-
     verifyToken,
+    reviewController.getClubReviews,  
+);
 
-    reviewController.getClubReviews,
-
-    
-
+// 리뷰 대표 키워드 조회
+router.get(
+    '/api/clubs/:clubId/reviews/top-keywords',
+    verifyToken,
+    reviewController.getTopKeywords
 );
 
 //리뷰 삭제
