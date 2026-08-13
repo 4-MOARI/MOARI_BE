@@ -11,7 +11,6 @@ exports.createReview = async ({
   content,
   keywordIds
 }) => {
-
   // 1.입력값 검증(rating, activityRating, sociabilityRating 모두 1~5 정수 검증)
   if (
     !Number.isInteger(rating) ||
@@ -161,6 +160,18 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
       clubId
     );
 
+    console.log("===== 리뷰 원본 값 확인 =====");
+    console.log(
+      `clubId ${clubId}`,
+      reviews.map((review) => ({
+        reviewId: review.reviewId,
+        rating: review.rating,
+        activityRating: review.activityRating,
+        sociabilityRating: review.sociabilityRating,
+      }))
+    );
+    console.log("===========================");
+
   const reviewsWithMine =
   reviews.map((review) => {
 
@@ -168,11 +179,29 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
 
     return {
       ...review,
+      keywords: review.keywords || [],
       isMine:
         review.userId === loginUserId,
     };
   });
  
+  const activityIntensity =
+    reviews.length > 0
+      ? reviews.reduce(
+          (sum, review) =>
+            sum + Number(review.activityRating || 0),
+          0
+        ) / reviews.length
+      : 0;
+
+  const friendshipRatio =
+    reviews.length > 0
+      ? reviews.reduce(
+          (sum, review) =>
+            sum + Number(review.sociabilityRating || 0),
+          0
+        ) / reviews.length
+      : 0;
 
   return {
     clubId,
@@ -180,6 +209,13 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
       Number(stats.averageRating || 0),
     reviewCount:
       Number(stats.reviewCount || 0),
+
+    activityIntensity:
+      Number(activityIntensity.toFixed(1)),
+
+    friendshipRatio:
+      Number(friendshipRatio.toFixed(1)),
+
     reviews: reviewsWithMine
   };
 };
@@ -248,7 +284,40 @@ exports.deleteReview = async ({
   );
 };
 
+/**
+ * 특정 동아리의 리뷰 대표 키워드 조회
+ */
+exports.getTopKeywordsByClubId = async (clubId) => {
 
+  // clubId 검증
+  if (!clubId || isNaN(clubId)) {
+    const error = new Error(
+      '올바른 동아리 ID가 아닙니다.'
+    );
 
+    error.status = 400;
+    error.code = 'REVIEW_400';
 
+    throw error;
+  }
 
+  // 동아리 존재 여부 확인
+  const club =
+    await clubModel.findClubById(clubId);
+
+  if (!club) {
+    const error = new Error(
+      '존재하지 않는 동아리입니다.'
+    );
+
+    error.status = 404;
+    error.code = 'CLUB_404';
+
+    throw error;
+  }
+
+  const keywords =
+    await reviewModel.getTopKeywordsByClubId(clubId);
+
+  return keywords;
+};

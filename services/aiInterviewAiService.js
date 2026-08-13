@@ -1,22 +1,23 @@
 const axios = require('axios');
 
-const concreteAnswerPattern = /\d|프로젝트|경험|역할|결과|활동|사례/;
+const concreteAnswerPattern =
+  /\d|프로젝트|경험|역할|결과|활동|문제|해결|성과|팀|협업|공모전|동아리|project|experience|role|result|team|collaboration/i;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const GEMINI_API_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const baseQuestionTemplates = [
-  (club) => `${club.clubName}에 지원한 이유를 말해주세요.`,
+  (club) => `${club.clubName}에 지원하게 된 이유를 말해 주세요.`,
   () => '팀 활동에서 갈등이 생겼을 때 어떻게 해결하시나요?',
   (club) => `${club.clubName}에서 본인이 기여할 수 있는 강점은 무엇인가요?`,
-  () => '최근 가장 몰입해서 진행한 활동이나 프로젝트를 설명해주세요.',
+  () => '최근 가장 몰입해서 진행한 활동이나 프로젝트를 설명해 주세요.',
   () => '동아리 활동과 학업을 함께 병행하기 위한 본인만의 방법이 있나요?',
   (club) => `${club.clubName} 활동에서 기대하는 성장 목표는 무엇인가요?`,
   () => '새로운 사람들과 협업할 때 중요하게 생각하는 태도는 무엇인가요?',
-  () => '어려운 과제를 만났을 때 문제를 해결하는 방식을 설명해주세요.',
+  () => '어려운 과제를 만났을 때 문제를 해결하는 방식을 설명해 주세요.',
   () => '지원 분야와 관련해 최근 관심 있게 본 주제나 경험이 있나요?',
-  (club) => `${club.clubName}에 들어온 뒤 가장 먼저 해보고 싶은 활동은 무엇인가요?`,
+  (club) => `${club.clubName}에 들어간다면 가장 먼저 해보고 싶은 활동은 무엇인가요?`,
 ];
 
 const hasConcreteAnswer = (answerText) =>
@@ -27,9 +28,7 @@ const safeJsonParse = (text) => {
     return JSON.parse(text);
   } catch (error) {
     const matched = text.match(/\{[\s\S]*\}/);
-    if (!matched) {
-      return null;
-    }
+    if (!matched) return null;
 
     try {
       return JSON.parse(matched[0]);
@@ -43,9 +42,7 @@ const callGeminiJson = async ({
   systemInstruction,
   prompt,
 }) => {
-  if (!GEMINI_API_KEY) {
-    return null;
-  }
+  if (!GEMINI_API_KEY) return null;
 
   try {
     const { data } = await axios.post(
@@ -90,13 +87,26 @@ const createMockQuestion = ({
   club,
   questionIndex,
   questionType = 'BASE',
+  interviewReviewSources = [],
 }) => {
   if (questionType === 'FOLLOW_UP') {
     return {
       questionType: 'FOLLOW_UP',
       sourceType: 'ANSWER_BASED',
       questionText:
-        '방금 답변한 내용을 바탕으로, 더 구체적인 사례나 본인의 역할을 설명해주세요.',
+        '방금 답변한 내용을 바탕으로, 더 구체적인 사례와 본인의 역할을 설명해 주세요.',
+    };
+  }
+
+  const reviewQuestions = interviewReviewSources
+    .flatMap((source) => source.questions || [])
+    .filter(Boolean);
+
+  if (reviewQuestions.length > 0 && questionIndex % 2 === 0) {
+    return {
+      questionType: 'BASE',
+      sourceType: 'INTERVIEW_REVIEW',
+      questionText: reviewQuestions[(questionIndex - 1) % reviewQuestions.length],
     };
   }
 
@@ -118,11 +128,13 @@ exports.createQuestion = async ({
   questionIndex,
   questionType = 'BASE',
   answerText,
+  interviewReviewSources = [],
 }) => {
   const fallback = createMockQuestion({
     club,
     questionIndex,
     questionType,
+    interviewReviewSources,
   });
 
   const generated = await callGeminiJson({
@@ -131,7 +143,7 @@ exports.createQuestion = async ({
     prompt: JSON.stringify({
       responseFormat: {
         questionType: 'BASE 또는 FOLLOW_UP',
-        sourceType: 'CLUB_INFO 또는 ANSWER_BASED 또는 GENERAL',
+        sourceType: 'CLUB_INFO 또는 INTERVIEW_REVIEW 또는 ANSWER_BASED 또는 GENERAL',
         questionText: '질문 문장',
       },
       club: {
@@ -140,19 +152,18 @@ exports.createQuestion = async ({
         description: club.description,
         activity: club.activity,
       },
+      interviewReviewSources,
       questionIndex,
       questionType,
       previousAnswer: answerText || null,
       instruction:
         questionType === 'FOLLOW_UP'
-          ? '이전 답변이 짧거나 구체성이 낮으므로 꼬리질문을 생성한다.'
-          : '동아리 정보와 일반 면접 기준을 반영해 기본 질문을 생성한다.',
+          ? '이전 답변의 근거와 구체성이 부족하므로 꼬리질문을 생성한다.'
+          : '면접후기 질문 데이터가 있으면 우선 참고하고, 없으면 동아리 정보와 일반 면접 기준을 반영해 기본 질문을 생성한다.',
     }),
   });
 
-  if (!generated?.questionText) {
-    return fallback;
-  }
+  if (!generated?.questionText) return fallback;
 
   return {
     questionType: generated.questionType || fallback.questionType,
@@ -180,7 +191,7 @@ const createMockAnswerFeedback = ({
           '답변 안에 경험이나 역할 단서가 포함되어 있습니다.',
         ]
       : [
-          '지원 의도나 생각의 방향은 확인됩니다.',
+          '지원 의도와 답변 방향은 확인됩니다.',
         ],
     missingPoints: status === 'SUFFICIENT'
       ? [
@@ -190,13 +201,13 @@ const createMockAnswerFeedback = ({
           '구체적인 사례, 본인의 역할, 결과 설명이 부족합니다.',
         ],
     improvementDirection: status === 'SUFFICIENT'
-      ? '답변 마지막에 동아리에서 하고 싶은 활동과 연결해 정리해보세요.'
-      : '상황, 본인의 역할, 행동, 결과 순서로 답변을 보완해보세요.',
+      ? '답변 마지막에 동아리에서 하고 싶은 활동과 연결해 정리해 보세요.'
+      : '상황, 본인의 역할, 행동, 결과 순서로 답변을 보완해 보세요.',
     feedbackText: status === 'SUFFICIENT'
       ? '답변에 본인의 경험 단서가 드러나며 질문 의도에 맞게 응답했습니다.'
-      : '답변의 방향은 확인되지만 구체적인 경험과 근거가 부족합니다.',
+      : '답변 방향은 확인되지만 구체적인 경험과 근거가 부족합니다.',
     improvementText: status === 'SUFFICIENT'
-      ? '답변 마지막에 동아리 활동과 어떻게 연결되는지 한 문장으로 정리하면 더 좋습니다.'
+      ? '마지막에 동아리 활동과 어떻게 연결되는지 한 문장으로 정리하면 더 좋습니다.'
       : '상황, 본인의 역할, 행동, 결과를 함께 말하면 답변의 설득력이 높아집니다.',
   };
 };
@@ -224,13 +235,11 @@ exports.createAnswerFeedback = async ({
       questionText,
       answerText,
       rule:
-        '답변이 짧거나 구체적인 경험, 역할, 결과가 부족하면 NEEDS_IMPROVEMENT로 평가한다.',
+        '답변의 근거, 구체적인 경험, 역할, 결과가 부족하면 NEEDS_IMPROVEMENT로 평가한다.',
     }),
   });
 
-  if (!generated?.status) {
-    return fallback;
-  }
+  if (!generated?.status) return fallback;
 
   return {
     status:
@@ -255,9 +264,7 @@ exports.shouldCreateFollowUp = ({
 }) => {
   const trimmedAnswer = answerText.trim();
 
-  if (trimmedAnswer.length < 40) {
-    return true;
-  }
+  if (trimmedAnswer.length < 40) return true;
 
   return !hasConcreteAnswer(trimmedAnswer);
 };
@@ -278,11 +285,11 @@ const createMockInterviewResult = ({
 
   return {
     overallSummary: hasShortAnswer
-      ? `${clubName} 모의면접에서 기본적인 지원 의도는 확인되었지만, 일부 답변은 사례와 근거가 더 필요합니다.`
-      : `${clubName} 모의면접에서 답변 흐름이 안정적이며, 질문 의도에 맞는 설명이 이루어졌습니다.`,
+      ? `${clubName} 모의면접에서 기본적인 지원 의도는 확인되었지만 일부 답변은 사례와 근거 보완이 필요합니다.`
+      : `${clubName} 모의면접에서 답변 흐름이 안정적이며 질문 의도에 맞는 설명을 제공했습니다.`,
     strengths: [
-      '지원 동기를 스스로 정리할 수 있음',
-      '질문에 맞춰 핵심 내용을 답변하려는 태도가 있음',
+      '지원 동기를 스스로 정리하려는 태도가 보입니다.',
+      '질문에 맞춰 답변 내용을 구성하려는 시도가 있습니다.',
     ],
     improvements: [
       '구체적인 경험과 본인의 역할을 함께 설명하기',
@@ -302,8 +309,8 @@ const createMockInterviewResult = ({
         label: '논리성',
         status: answeredTurns.length >= 3 ? 'SUFFICIENT' : 'NEEDS_IMPROVEMENT',
         summary: answeredTurns.length >= 3
-          ? '여러 질문에 대해 답변 흐름을 이어갔습니다.'
-          : '답변 흐름을 더 충분히 쌓을 필요가 있습니다.',
+          ? '여러 질문에 대한 답변 흐름이 이어졌습니다.'
+          : '답변 흐름을 더 충분히 보여줄 필요가 있습니다.',
       },
       {
         key: 'experienceSpecificity',
@@ -379,9 +386,7 @@ exports.createInterviewResult = async ({
     }),
   });
 
-  if (!generated?.overallSummary) {
-    return fallback;
-  }
+  if (!generated?.overallSummary) return fallback;
 
   return {
     overallSummary: generated.overallSummary,

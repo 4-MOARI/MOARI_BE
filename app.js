@@ -14,7 +14,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const interviewReviewRoutes = require('./routes/interviewReviewRoutes');
 const aiInterviewRoutes = require('./routes/aiInterviewRoutes');
 const compatibilityRoutes = require('./routes/compatibilityRoute');
-
+const comparisonRoutes = require('./routes/comparisonRoutes');
 const { errorHandler } = require('./middlewares/errorHandler');
 
 const app = express();
@@ -82,6 +82,7 @@ app.use('/api/uploads', uploadRoutes);
 
 
 app.use('/api/compatibility', compatibilityRoutes);
+app.use('/api/comparison', comparisonRoutes);
 
 
 

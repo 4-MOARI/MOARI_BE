@@ -44,10 +44,10 @@ exports.getClubReviews = async (req, res, next ) => {
     try {
         const clubId = Number(req.params.clubId);
 
-        const userId = req.user.userId;
+        const loginUserId = req.user ? req.user.userId : null;
 
         const result = 
-            await reviewService.getClubReviews( clubId );
+            await reviewService.getClubReviews( clubId, loginUserId );
 
         return res.status(200).json({
             success: true,
@@ -91,4 +91,23 @@ exports.deleteReview = async (
     } catch (error) {
         next(error);
     }
+};
+
+// 특정 동아리 리뷰 대표 키워드 조회
+exports.getTopKeywords = async (req, res, next) => {
+  try {
+    const clubId = Number(req.params.clubId);
+
+    const keywords =
+      await reviewService.getTopKeywordsByClubId(clubId);
+
+    return res.status(200).json({
+      success: true,
+      data: keywords,
+      error: null
+    });
+
+  } catch (error) {
+    next(error);
+  }
 };

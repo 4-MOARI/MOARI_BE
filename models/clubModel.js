@@ -26,6 +26,54 @@ exports.findClubById = async (clubId) => {
   return rows[0];
 }; 
 
+// 궁합 분석용: 여러 동아리를 한 번에 조회 (카테고리명 + 평균평점 포함)
+exports.findClubsByIds = async (clubIds) => {
+  if (!Array.isArray(clubIds) || clubIds.length === 0) return [];
+
+  const placeholders = clubIds.map(() => '?').join(', ');
+
+  const [rows] = await db.query(
+    `
+    SELECT 
+      c.clubId,
+      c.clubName,
+      c.categoryId,
+      cat.categoryName,
+      c.briefDescription,
+      c.description,
+      c.activity,
+      ROUND(AVG(r.rating), 1) AS avgRating
+    FROM clubs c
+    LEFT JOIN categories cat ON c.categoryId = cat.categoryId
+    LEFT JOIN reviews r ON c.clubId = r.clubId
+    WHERE c.clubId IN (${placeholders})
+    GROUP BY 
+      c.clubId, c.clubName, c.categoryId, cat.categoryName,
+      c.briefDescription, c.description, c.activity
+    `,
+    clubIds
+  );
+
+  if (rows.length === 0) return rows;
+
+  // 정기 활동 시간(schedules)을 동아리별로 붙여서 반환
+  const schedulePlaceholders = rows.map(() => '?').join(', ');
+  const [scheduleRows] = await db.query(
+    `
+    SELECT scheduleId, clubId, dayOfWeek, startTime, endTime
+    FROM clubSchedules
+    WHERE clubId IN (${schedulePlaceholders})
+    ORDER BY scheduleId ASC
+    `,
+    rows.map((r) => r.clubId)
+  );
+
+  return rows.map((club) => ({
+    ...club,
+    schedules: scheduleRows.filter((s) => s.clubId === club.clubId),
+  }));
+};
+
 exports.findClubByNameAndSchool = async (clubName, schoolId) => {
   const [rows] = await db.query(
     `
@@ -39,6 +87,7 @@ exports.findClubByNameAndSchool = async (clubName, schoolId) => {
 
   return rows[0];
 };
+
 
 // 동아리 목록 조회 (검색/필터/정렬)
 // ✅ 이렇게 수정
@@ -165,6 +214,57 @@ exports.getClubs = async ({
 
   // ✅ totalCount와 clubs를 함께 반환 (서비스에서 totalPages 계산에 사용)
   return { clubs: rows, totalCount };
+};
+
+// 비교할 동아리 여러 개 조회
+exports.findClubsByIds = async (clubIds) => {
+  if (!clubIds || clubIds.length === 0) return [];
+
+  const placeholders = clubIds.map(() => '?').join(', ');
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      c.clubId,
+      c.clubName,
+      c.briefDescription,
+      c.description,
+      c.activity,
+      c.categoryId,
+      cat.categoryName,
+      c.recruitStartAt,
+      c.recruitEndAt,
+      c.profileImageUrl,
+      c.coverImageUrl,
+      c.updatedAt,
+      COUNT(DISTINCT f.userId) AS favoriteCount,
+      ROUND(AVG(r.rating), 1) AS avgRating
+    FROM clubs c
+    LEFT JOIN categories cat
+      ON c.categoryId = cat.categoryId
+    LEFT JOIN favorites f
+      ON c.clubId = f.clubId
+    LEFT JOIN reviews r
+      ON c.clubId = r.clubId
+    WHERE c.clubId IN (${placeholders})
+    GROUP BY
+      c.clubId,
+      c.clubName,
+      c.briefDescription,
+      c.description,
+      c.activity,
+      c.categoryId,
+      cat.categoryName,
+      c.recruitStartAt,
+      c.recruitEndAt,
+      c.profileImageUrl,
+      c.coverImageUrl,
+      c.updatedAt
+    `,
+    clubIds
+  );
+
+  return rows;
 };
 
 // 수정 로그 조회
