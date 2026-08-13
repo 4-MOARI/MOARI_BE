@@ -555,3 +555,57 @@ exports.updateClub = async (clubId, updateData) => {
     clubId: Number(clubId)
   };
 };
+
+exports.migrateClubSchedules = async (clubSchedules) => {
+  if (!Array.isArray(clubSchedules)) {
+    const error = new Error('동아리 활동시간 데이터가 올바르지 않습니다.');
+    error.status = 400;
+    throw error;
+  }
+
+  const results = [];
+
+  for (const item of clubSchedules) {
+    if (!item.clubName || !Array.isArray(item.schedules)) continue;
+
+    const club = await clubModel.findClubByNameAndSchool(
+      item.clubName,
+      item.schoolId ?? null
+    );
+
+    if (!club) {
+      results.push({
+        clubName: item.clubName,
+        status: 'NOT_FOUND'
+      });
+      continue;
+    }
+
+    if (item.schedules.length === 0) {
+      results.push({
+        clubName: item.clubName,
+        clubId: club.clubId,
+        status: 'NO_SCHEDULE'
+      });
+      continue;
+    }
+
+    await clubModel.deleteClubSchedulesByClubId(club.clubId);
+    await clubModel.insertClubSchedulesBulk(
+      club.clubId,
+      item.schedules
+    );
+
+    results.push({
+      clubName: item.clubName,
+      clubId: club.clubId,
+      status: 'SUCCESS',
+      scheduleCount: item.schedules.length
+    });
+  }
+
+  return results;
+};
+exports.getAllClubsForMigration = async () => {
+  return await clubModel.getAllClubsForMigration();
+};

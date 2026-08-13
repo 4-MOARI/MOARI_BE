@@ -144,3 +144,62 @@ exports.registerClub = async (req, res, next) => {
     next(error);
   }
 };
+// 일괄 활동시간 크롤링용 기존 동아리 목록 조회
+exports.getAllClubsForScheduleCrawl = async (req, res, next) => {
+  try {
+    const result = await clubService.getAllClubsForScheduleCrawl();
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.migrateClubSchedules = async (req, res, next) => {
+  try {
+    const result = await clubService.migrateClubSchedules(req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      error: null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+exports.getAllClubsForMigration = async (req, res, next) => {
+  try {
+    const clubs = await clubService.getAllClubsForMigration();
+
+    return res.status(200).json({
+      success: true,
+      data: clubs,
+      error: null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getAllClubsForMigration = async (req, res) => {
+  try {
+    const clubs = await clubService.getAllClubsForMigration();
+
+    return res.status(200).json({
+      success: true,
+      data: clubs,
+      error: null
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      success: false,
+      data: null,
+      error: error.message
+    });
+  }
+};
