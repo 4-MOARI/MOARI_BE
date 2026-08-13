@@ -206,27 +206,3 @@ exports.deleteReview = async (
 };
 
 
-// 특정 동아리의 리뷰에서 가장 많이 선택된 키워드 조회
-exports.getTopKeywordsByClubId = async (clubId) => {
-  const [rows] = await db.query(
-    `
-    SELECT
-      rk.keywordId,
-      rk.keywordName,
-      COUNT(*) AS count
-    FROM reviewKeywordMappings rkm
-    JOIN reviews r
-      ON r.reviewId = rkm.reviewId
-    JOIN reviewKeywords rk
-      ON rk.keywordId = rkm.keywordId
-    WHERE r.clubId = ?
-    GROUP BY rk.keywordId, rk.keywordName
-    ORDER BY count DESC, rk.keywordId ASC
-    LIMIT 2
-    `,
-    [clubId]
-  );
-  console.log('비교 키워드 DB 조회:', clubId, rows);
-
-  return rows;
-};
