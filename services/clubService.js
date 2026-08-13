@@ -492,23 +492,32 @@ exports.updateClub = async (clubId, updateData) => {
   await clubModel.updateClubInfo(clubId, safeUpdateData);
   await clubModel.deleteClubLinksByClubId(clubId);
 
-  if (updateData.links && Array.isArray(updateData.links) && updateData.links.length > 0) {
+  if (
+    updateData.links &&
+    Array.isArray(updateData.links) &&
+    updateData.links.length > 0
+  ) {
     const formattedLinks = updateData.links
       .map(link => ({
-        linkType: link.linkType || link.type || link.title || link.linkTitle,
-        linkUrl: link.linkUrl || link.url
+        linkType:
+          link.linkType ||
+          link.type ||
+          link.title ||
+          link.linkTitle,
+        linkUrl: link.linkUrl || link.url,
       }))
-      .filter(link => link.linkType && link.linkUrl && link.linkUrl.trim() !== '');
+      .filter(
+        link =>
+          link.linkType &&
+          link.linkUrl &&
+          link.linkUrl.trim() !== ''
+      );
 
     if (formattedLinks.length > 0) {
-      await clubModel.insertClubLinks(clubId, formattedLinks);
-    }
-    if (
-      clubData.schedules &&
-      Array.isArray(clubData.schedules) &&
-      clubData.schedules.length > 0
-    ) {
-      await clubModel.insertClubSchedules(newClubId, clubData.schedules);
+      await clubModel.insertClubLinks(
+        clubId,
+        formattedLinks
+      );
     }
   }
 

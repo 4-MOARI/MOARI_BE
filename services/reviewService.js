@@ -160,6 +160,18 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
       clubId
     );
 
+    console.log("===== 리뷰 원본 값 확인 =====");
+    console.log(
+      `clubId ${clubId}`,
+      reviews.map((review) => ({
+        reviewId: review.reviewId,
+        rating: review.rating,
+        activityRating: review.activityRating,
+        sociabilityRating: review.sociabilityRating,
+      }))
+    );
+    console.log("===========================");
+
   const reviewsWithMine =
   reviews.map((review) => {
 
@@ -173,6 +185,23 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
     };
   });
  
+  const activityIntensity =
+    reviews.length > 0
+      ? reviews.reduce(
+          (sum, review) =>
+            sum + Number(review.activityRating || 0),
+          0
+        ) / reviews.length
+      : 0;
+
+  const friendshipRatio =
+    reviews.length > 0
+      ? reviews.reduce(
+          (sum, review) =>
+            sum + Number(review.sociabilityRating || 0),
+          0
+        ) / reviews.length
+      : 0;
 
   return {
     clubId,
@@ -180,6 +209,13 @@ exports.getClubReviews = async (clubId, loginUserId ) => {
       Number(stats.averageRating || 0),
     reviewCount:
       Number(stats.reviewCount || 0),
+
+    activityIntensity:
+      Number(activityIntensity.toFixed(1)),
+
+    friendshipRatio:
+      Number(friendshipRatio.toFixed(1)),
+
     reviews: reviewsWithMine
   };
 };
