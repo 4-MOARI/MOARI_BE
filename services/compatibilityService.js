@@ -1,16 +1,69 @@
 const { GoogleGenAI } = require('@google/genai');
 const clubModel = require('../models/clubModel');
+const reviewModel = require('../models/reviewModel'); 
 
-// @google/genai SDK는 환경 변수(process.env.GEMINI_API_KEY)를 자동 인식합니다.
 const ai = new GoogleGenAI({});
 
-/**
- * AI 동아리 궁합 분석 서비스 로직
- * @param {string} userId - 현재 로그인한 유저 ID (필요시 찜 목록 검증용)
- * @param {Array<number>} clubIds - 사용자가 찜한 동아리 중 선택한 ID 배열 (2~4개)
- */
-exports.getCompatibilityResult = async (userId, clubIds) => {
-  // 1. 개수 제약 검증 (최소 2개 ~ 최대 4개)
+// 리뷰 배열을 받아서 동아리별 요약 통계로 가공
+function summarizeReviews(reviews) {
+  if (!reviews || reviews.length === 0) {
+    return {
+      reviewCount: 0,
+      avgActivityRating: null,
+      avgSociabilityRating: null,
+      topKeywords: [],
+      recentComments: [],
+    };
+  }
+
+  const activityRatings = reviews
+    .map((r) => r.activityRating)
+    .filter((v) => v != null);
+  const sociabilityRatings = reviews
+    .map((r) => r.sociabilityRating)
+    .filter((v) => v != null);
+
+  const avg = (arr) =>
+    arr.length > 0
+      ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10
+      : null;
+
+  // 키워드 빈도 집계
+  const keywordCount = {};
+  reviews.forEach((r) => {
+    const keywords = Array.isArray(r.keywords)
+      ? r.keywords
+      : typeof r.keywords === 'string'
+      ? JSON.parse(r.keywords)
+      : [];
+    keywords.forEach((k) => {
+      const name = k.keywordName;
+      if (!name) return;
+      keywordCount[name] = (keywordCount[name] || 0) + 1;
+    });
+  });
+
+  const topKeywords = Object.entries(keywordCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name]) => name);
+
+  // 최신 리뷰 2~3개만 짧게 발췌 (프롬프트 크기 제어)
+  const recentComments = reviews
+    .slice(0, 3)
+    .map((r) => (r.content || '').slice(0, 80))
+    .filter(Boolean);
+
+  return {
+    reviewCount: reviews.length,
+    avgActivityRating: avg(activityRatings),
+    avgSociabilityRating: avg(sociabilityRatings),
+    topKeywords,
+    recentComments,
+  };
+}
+
+exports.getCompatibilityResult = async (clubIds) => {
   if (!Array.isArray(clubIds) || clubIds.length < 2 || clubIds.length > 4) {
     const error = new Error('비교할 동아리는 2개 이상 4개 이하로 선택해야 합니다.');
     error.status = 400;
@@ -18,8 +71,6 @@ exports.getCompatibilityResult = async (userId, clubIds) => {
     throw error;
   }
 
-  // 2. DB에서 선택된 동아리 정보 조회
-  // (만약 찜한 동아리인지 검증하거나 실제 DB 모델을 쓸려면 아래처럼 쿼리합니다)
   const clubs = await clubModel.findClubsByIds(clubIds);
 
   if (!clubs || clubs.length !== clubIds.length) {
@@ -28,26 +79,48 @@ exports.getCompatibilityResult = async (userId, clubIds) => {
     error.code = 'CLUB_404';
     throw error;
   }
-  
-//   // [임시 테스트용 매핑] 실제 DB 연결 시 해당 동아리 테이블에서 정보를 가져오면 됩니다.
-//   const dummyClubsData = {
-//     1: { clubName: "A동아리", intro: "코딩 스터디", schedule: "월요일 18시", budget: "3만원" },
-//     2: { clubName: "B동아리", intro: "영상 제작", schedule: "화요일 19시", budget: "2만원" },
-//     3: { clubName: "C동아리", intro: "학술 친목", schedule: "수요일 18시", budget: "3만원" },
-//     4: { clubName: "D동아리", intro: "창업 소모임", schedule: "목요일 20시", budget: "5만원" },
-//     5: { clubName: "E동아리", intro: "독서 모임", schedule: "금요일 19시", budget: "1만원" }
-//   };
 
-  const selectedClubsInfo = clubIds.map(id => {
-    return dummyClubsData[id] || { clubName: `동아리${id}`, intro: "정보 없음", schedule: "미정", budget: "정보 없음" };
+  // 선택된 동아리들의 리뷰를 한 번에 조회
+  const allReviews = await reviewModel.getReviewsByClubIds(clubIds);
+
+  // clubId별로 리뷰 그룹핑
+  const reviewsByClub = {};
+  allReviews.forEach((r) => {
+    if (!reviewsByClub[r.clubId]) reviewsByClub[r.clubId] = [];
+    reviewsByClub[r.clubId].push(r);
   });
 
-  const selectedClubNames = selectedClubsInfo.map(c => c.clubName);
+  const selectedClubsInfo = clubs.map((club) => {
+    const reviewSummary = summarizeReviews(reviewsByClub[club.clubId]);
 
-  // 3. AI에게 전달할 프롬프트 구성
+    return {
+      clubName: club.clubName,
+      category: club.categoryName,
+      intro: club.briefDescription || club.description || '정보 없음',
+      activity: club.activity || '정보 없음',
+      schedule:
+        Array.isArray(club.schedules) && club.schedules.length > 0
+          ? club.schedules
+              .map((s) => `${s.dayOfWeek} ${s.startTime}-${s.endTime}`)
+              .join(', ')
+          : '정기 활동 없음',
+      avgRating: club.avgRating ?? null,
+
+      // 리뷰 기반 정보 추가
+      reviewCount: reviewSummary.reviewCount,
+      avgActivityRating: reviewSummary.avgActivityRating, // 활동 강도 (리뷰 평균)
+      avgSociabilityRating: reviewSummary.avgSociabilityRating, // 친목 비중 (리뷰 평균)
+      topKeywords: reviewSummary.topKeywords, // 대표 키워드
+      recentComments: reviewSummary.recentComments, // 최근 리뷰 발췌
+    };
+  });
+
+  const selectedClubNames = selectedClubsInfo.map((c) => c.clubName);
+
   const prompt = `
 너는 대학 동아리 궁합 분석 AI 전문가야.
-사용자가 찜한 동아리 중 엄선한 아래 동아리들의 정보(소개, 정기모임 시간, 회비 등)를 바탕으로 일정 충돌 여부, 활동 시너지, 병행 강도, 예산 부담도를 분석해서 **오직 순수 JSON 포맷으로만** 응답해줘. 
+아래 동아리들의 정보(소개, 활동 내용, 정기모임 시간, 평균 평점, 리뷰 기반 활동 강도/친목 비중/대표 키워드/최근 리뷰 요약)를 종합적으로 분석해서, 일정 충돌 여부, 활동 시너지, 병행 강도, 예산 부담도를 판단하고 **오직 순수 JSON 포맷으로만** 응답해줘.
+특히 avgActivityRating(활동 강도), avgSociabilityRating(친목 비중), topKeywords, recentComments는 실제 회원들의 리뷰에서 나온 정성적 정보이니 synergyDesc/intensityDesc/recommendationReason을 작성할 때 반드시 참고해줘.
 마크다운(\`\`\`json)이나 다른 설명 텍스트는 절대 포함하지 마.
 
 [선택된 동아리 정보]
@@ -57,21 +130,20 @@ ${JSON.stringify(selectedClubsInfo, null, 2)}
 {
   "selectedClubs": ${JSON.stringify(selectedClubNames)},
   "conflictScore": (1~5 정수, 높을수록 충돌 적음),
-  "conflictDesc": (문자열 요약, 예: "거의 없음"),
+  "conflictDesc": (문자열 요약),
   "synergyScore": (1~5 정수),
-  "synergyDesc": (문자열 요약, 예: "학술 + 친목 균형"),
+  "synergyDesc": (문자열 요약),
   "intensityScore": (1~5 정수),
-  "intensityDesc": (문자열 요약, 예: "보통"),
+  "intensityDesc": (문자열 요약),
   "budgetScore": (1~5 정수),
-  "budgetDesc": (문자열 요약, 예: "보통 (추가 비용 있음)"),
+  "budgetDesc": (문자열 요약),
   "recommendationScore": (1~5 정수),
-  "recommendationReason": (문자열, 추천 이유 상세 설명),
-  "cautionNote": (문자열, 주의사항)
+  "recommendationReason": (문자열),
+  "cautionNote": (문자열)
 }
 `;
 
   try {
-    // 4. Gemini 모델 호출
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -79,17 +151,13 @@ ${JSON.stringify(selectedClubsInfo, null, 2)}
 
     let rawText = response.text.trim();
 
-    // 마크다운 백틱 제거 가공
     if (rawText.startsWith('```json')) {
       rawText = rawText.replace(/^```json/, '').replace(/```$/, '').trim();
     } else if (rawText.startsWith('```')) {
       rawText = rawText.replace(/^```/, '').replace(/```$/, '').trim();
     }
 
-    // 5. JSON 파싱 후 반환
-    const analysisResult = JSON.parse(rawText);
-    return analysisResult;
-
+    return JSON.parse(rawText);
   } catch (error) {
     console.error('Gemini API 분석 오류:', error);
     const apiError = new Error('AI 분석 처리 중 오류가 발생했습니다.');

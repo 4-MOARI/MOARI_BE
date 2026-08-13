@@ -128,6 +128,44 @@ exports.getReviewsByClubId = async (
   return rows;
 };
 
+/**
+ * 여러 동아리의 리뷰를 한 번에 조회 (궁합 분석용)
+ */
+exports.getReviewsByClubIds = async (clubIds) => {
+  if (!Array.isArray(clubIds) || clubIds.length === 0) return [];
+
+  const placeholders = clubIds.map(() => '?').join(', ');
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      r.reviewId,
+      r.clubId,
+      r.userId,
+      r.rating,
+      r.activityRating,
+      r.sociabilityRating,
+      r.content,
+      r.createdAt,
+      CASE 
+        WHEN COUNT(rk.keywordId) = 0 THEN JSON_ARRAY()
+        ELSE JSON_ARRAYAGG(
+          JSON_OBJECT('keywordId', rk.keywordId, 'keywordName', rk.keywordName)
+        )
+      END AS keywords
+    FROM reviews r
+    LEFT JOIN reviewKeywordMappings rkm ON r.reviewId = rkm.reviewId
+    LEFT JOIN reviewKeywords rk ON rkm.keywordId = rk.keywordId
+    WHERE r.clubId IN (${placeholders})
+    GROUP BY r.reviewId
+    ORDER BY r.clubId, r.createdAt DESC
+    `,
+    clubIds
+  );
+
+  return rows;
+};
+
 
 /**
  * reviewId로 리뷰 조회
