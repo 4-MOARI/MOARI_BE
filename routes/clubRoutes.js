@@ -26,9 +26,11 @@ router.get('/:clubId', optionalAuthMiddleware, clubController.getClubDetail);
 // 동아리 수정 API
 router.patch('/clubs/:clubId/update', authMiddleware, clubController.updateClub);
 router.patch('/:clubId/update', authMiddleware, clubController.updateClub);
-
-// 동아리 등록 API
+router.get('/crawl/clubs', clubController.getAllClubsForMigration);
+router.get('/migration/clubs', clubController.getAllClubsForMigration);
+//등록
 router.get('/clubs/:clubId', optionalAuthMiddleware, clubController.getClubDetail);
 router.post('/register', authMiddleware, clubController.registerClub);
-
+router.get('/crawl/clubs', clubController.getAllClubsForScheduleCrawl);
 module.exports = router;
+router.post('/crawl/schedules', clubController.migrateClubSchedules);

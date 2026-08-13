@@ -650,3 +650,47 @@ exports.insertClubHistory = async ({
 
   return result.insertId;
 };
+// 크롤링한 정기활동시간 일괄 저장
+exports.insertClubSchedulesBulk = async (clubId, schedules) => {
+  if (!clubId || !Array.isArray(schedules) || schedules.length === 0) {
+    return 0;
+  }
+
+  let insertedCount = 0;
+
+  for (const schedule of schedules) {
+    await db.query(
+      `
+      INSERT INTO clubSchedules (
+        clubId,
+        dayOfWeek,
+        startTime,
+        endTime
+      )
+      VALUES (?, ?, ?, ?)
+      `,
+      [
+        clubId,
+        schedule.dayOfWeek,
+        schedule.startTime,
+        schedule.endTime
+      ]
+    );
+
+    insertedCount++;
+  }
+
+  return insertedCount;
+};
+exports.getAllClubsForMigration = async () => {
+  const [rows] = await db.query(`
+    SELECT
+      clubId,
+      clubName,
+      schoolId
+    FROM clubs
+    ORDER BY clubId ASC
+  `);
+
+  return rows;
+};

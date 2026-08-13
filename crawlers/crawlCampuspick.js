@@ -279,4 +279,18 @@ async function crawlCampuspick() {
   }
 }
 
+// 기존 등록 동아리 전체 조회 (일괄 활동시간 크롤링용)
+exports.getAllClubsForScheduleCrawl = async () => {
+  const [rows] = await db.query(`
+    SELECT
+      clubId,
+      clubName,
+      schoolId
+    FROM clubs
+    ORDER BY clubId ASC
+  `);
+
+  return rows;
+};
+
 crawlCampuspick();
