@@ -228,7 +228,73 @@ const getInterviewReviewsService = async (clubId) => {
   };
 };
 
+// 내가 작성한 면접 후기 조회
+const getMyInterviewReviewsService = async (userId) => {
+  const reviews =
+    await interviewReviewModel.findInterviewReviewsByUserId(
+      userId
+    );
+
+  const parsedReviews = reviews.map((review) => ({
+    ...review,
+
+    competencies:
+      typeof review.competencies === 'string'
+        ? JSON.parse(review.competencies)
+        : review.competencies || [],
+
+    questions:
+      typeof review.questions === 'string'
+        ? JSON.parse(review.questions)
+        : review.questions || [],
+  }));
+
+  return {
+    totalCount: parsedReviews.length,
+    reviews: parsedReviews,
+  };
+};
+
+
+const deleteInterviewReviewService = async ({
+  interviewReviewId,
+  userId,
+}) => {
+  const review =
+    await interviewReviewModel.findInterviewReviewById(
+      interviewReviewId
+    );
+
+  if (!review) {
+    throw {
+      status: 404,
+      code: 'INTERVIEW_4041',
+      message: '존재하지 않는 면접 후기입니다.',
+    };
+  }
+
+
+  if (review.userId !== userId) {
+    throw {
+      status: 403,
+      code: 'INTERVIEW_4031',
+      message: '본인이 작성한 면접 후기만 삭제할 수 있습니다.',
+    };
+  }
+
+  await interviewReviewModel.deleteInterviewReviewById(
+    interviewReviewId
+  );
+
+  return {
+    interviewReviewId: Number(interviewReviewId),
+  };
+};
+
 module.exports = {
   createInterviewReviewService,
   getInterviewReviewsService,
+
+  getMyInterviewReviewsService,
+  deleteInterviewReviewService,
 };

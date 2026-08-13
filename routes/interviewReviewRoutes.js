@@ -3,6 +3,8 @@ const express = require('express');
 const {
   createInterviewReview,
   getInterviewReviews,
+  getMyInterviewReviews,
+  deleteInterviewReview,
 } = require('../controllers/interviewReviewController');
 
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -26,6 +28,19 @@ router.post(
   '/clubs/:clubId/interview-reviews',
   authMiddleware,
   createInterviewReview
+);
+
+router.get(
+  '/users/me/interview-reviews',
+  authMiddleware,
+  getMyInterviewReviews
+);
+
+
+router.delete(
+  '/interview-reviews/:interviewReviewId',
+  authMiddleware,
+  deleteInterviewReview
 );
 
 module.exports = router;
