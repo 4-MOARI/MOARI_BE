@@ -1,4 +1,5 @@
 const clubModel = require('../models/clubModel');
+const reviewModel = require('../models/reviewModel');
 
 exports.getComparisonData = async (clubIds) => {
   if (!Array.isArray(clubIds) || clubIds.length < 2 || clubIds.length > 4) {
@@ -31,6 +32,13 @@ exports.getComparisonData = async (clubIds) => {
 
   const schedulesByClubId = {};
 
+  const topKeywordsByClubId = {};
+
+  for (const clubId of normalizedIds) {
+    topKeywordsByClubId[clubId] =
+        await reviewModel.getTopKeywordsByClubId(clubId);
+  }
+
   for (const clubId of normalizedIds) {
     schedulesByClubId[clubId] =
       await clubModel.findClubSchedulesByClubId(clubId);
@@ -45,6 +53,8 @@ exports.getComparisonData = async (clubIds) => {
       categoryId: club.categoryId,
       categoryName: club.categoryName || '미지정',
 
+      topKeywords: topKeywordsByClubId[clubId] || [],
+      
       briefDescription: club.briefDescription || '',
       description: club.description || '',
       activity: club.activity || '',
