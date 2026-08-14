@@ -35,8 +35,18 @@ exports.getComparisonData = async (clubIds) => {
   const topKeywordsByClubId = {};
 
   for (const clubId of normalizedIds) {
-    topKeywordsByClubId[clubId] =
+    try {
+      topKeywordsByClubId[clubId] =
         await reviewModel.getTopKeywordsByClubId(clubId);
+    } catch (error) {
+      console.error(
+        `비교 키워드 조회 실패 - clubId: ${clubId}`,
+        error
+      );
+
+      // 키워드 조회가 실패해도 비교 API 전체는 정상적으로 반환
+      topKeywordsByClubId[clubId] = [];
+    }
   }
 
   for (const clubId of normalizedIds) {
