@@ -1,7 +1,8 @@
 <div align="center">
 
 <!-- 📸 로고 이미지 자리 -->
-<img width="2400" height="1309" alt="KakaoTalk_20260518_233251165" src="https://github.com/user-attachments/assets/29aead96-abbf-491a-ad58-e37fda5ffebd" />
+<img width="1920" height="1080" alt="피피티 표지" src="https://github.com/user-attachments/assets/68443f12-c336-40d7-94a3-b8a9de4dc1fd" />
+
 
 
 # MOARI (모아리)
