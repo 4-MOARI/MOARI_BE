@@ -170,9 +170,6 @@ async function crawlEwha() {
     console.log('DB 저장 결과:');
     console.log(JSON.stringify(saveResponse.data, null, 2));
     process.exit(0);
-
-  console.log(result);
-  process.exit(0);
 }
 
 crawlEwha().catch((error) => {
