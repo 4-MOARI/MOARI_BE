@@ -16,6 +16,7 @@ const aiInterviewRoutes = require('./routes/aiInterviewRoutes');
 const compatibilityRoutes = require('./routes/compatibilityRoute');
 const comparisonRoutes = require('./routes/comparisonRoutes');
 const { errorHandler } = require('./middlewares/errorHandler');
+const db = require('./database/db');
 
 const app = express();
 
@@ -36,6 +37,22 @@ app.use(
 
 app.get('/', (req, res) => {
   res.send('서버 실행 중!');
+});
+
+
+// 헬스체크: 프로세스가 살아 있는지 (K8s livenessProbe 용)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// 헬스체크: DB까지 연결되어 요청을 받을 준비가 됐는지 (K8s readinessProbe 용)
+app.get('/health/ready', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.status(200).json({ status: 'ok', db: 'up' });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'down' });
+  }
 });
 
 
